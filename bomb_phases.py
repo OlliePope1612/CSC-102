@@ -230,18 +230,25 @@ class Wires(PhaseThread):
     def __init__(self, component, target, name="Wires"):
         super().__init__(name, component, target)
 
-    # runs the thread
     def run(self):
-        # TODO
-        pass
+        self._running = True
+        while self._running:
+            wire_states = self._component  # A dictionary
+            correct = True
+            for wire, should_be_connected in self._target.items():
+                if wire_states.get(wire) != should_be_connected:
+                    correct = False
+                    break
+            if correct:
+                self._defused = True
+                self._running = False
+            sleep(0.1)
 
-    # returns the jumper wires state as a string
     def __str__(self):
-        if (self._defused):
+        if self._defused:
             return "DEFUSED"
-        else:
-            # TODO
-            pass
+        return str(self._component)
+
 
 # the pushbutton phase
 class Button(PhaseThread):
@@ -299,15 +306,16 @@ class Toggles(PhaseThread):
     def __init__(self, component, target, name="Toggles"):
         super().__init__(name, component, target)
 
-    # runs the thread
     def run(self):
-        # TODO
-        pass
+        self._running = True
+        while self._running:
+            toggle_state = ''.join(['1' if sw.value else '0' for sw in self._component])  # This takes binary string as input
+            if toggle_state == self._target:
+                self._defused = True
+                self._running = False
+            sleep(0.1)
 
-    # returns the toggle switches state as a string
     def __str__(self):
-        if (self._defused):
+        if self._defused:
             return "DEFUSED"
-        else:
-            # TODO
-            pass
+        return ''.join(['1' if sw.value else '0' for sw in self._component])
