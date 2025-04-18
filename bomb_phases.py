@@ -1,7 +1,7 @@
 #################################
 # CSC 102 Defuse the Bomb Project
 # GUI and Phase class definitions
-# Team: 
+# Team: Oliver Pope, Eddie Mckenna, Dilan Kochhar
 #################################
 
 # import the configs
