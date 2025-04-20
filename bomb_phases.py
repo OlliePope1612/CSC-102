@@ -157,6 +157,14 @@ class Timer(PhaseThread):
         # by default, each tick is 1 second
         self._interval = 1
 
+# Optional buttons for debugging; disabled in final build
+if SHOW_BUTTONS:
+    self.pause_btn = Button(self.frame, text="Pause", command=self.pause)
+    self.pause_btn.grid(row=3, column=0)
+
+    self.quit_btn = Button(self.frame, text="Quit", command=self.quit)
+    self.quit_btn.grid(row=3, column=1)
+
     # runs the thread
     def run(self):
         self._running = True
