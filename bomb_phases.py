@@ -1,7 +1,7 @@
 #################################
 # CSC 102 Defuse the Bomb Project
 # GUI and Phase class definitions
-# Team: Oliver Pope, Eddie Mckenna, Dilan Kochhar
+# Team: Oliver Pope, Eddie McKenna, Dilan Kochhar
 #################################
 
 # import the configs
@@ -9,10 +9,14 @@ from bomb_configs import *
 # other imports
 from tkinter import *
 import tkinter
+from tkinter import messagebox, PhotoImage
 from threading import Thread
 from time import sleep
 import os
 import sys
+
+# Import Pillow to handle JPEG images
+from PIL import Image, ImageTk
 
 #########
 # classes
@@ -39,7 +43,6 @@ class Lcd(Frame):
         # the scrolling informative "boot" text
         self._lscroll = Label(self, bg="black", fg="white", font=("Courier New", 14), text="", justify=LEFT)
         self._lscroll.grid(row=0, column=0, columnspan=3, sticky=W)
-        self.pack(fill=BOTH, expand=True)
 
     # sets up the LCD GUI
     def setup(self):
@@ -249,7 +252,6 @@ class Wires(PhaseThread):
             return "DEFUSED"
         return str(self._component)
 
-
 # the pushbutton phase
 class Button(PhaseThread):
     def __init__(self, component_state, component_rgb, target, color, timer, name="Button"):
@@ -319,3 +321,136 @@ class Toggles(PhaseThread):
         if self._defused:
             return "DEFUSED"
         return ''.join(['1' if sw.value else '0' for sw in self._component])
+
+
+
+# === FAMILY GUY INTERACTION GAME START ===
+
+def interact_with_peter(parent_frame, callback):
+    def on_answer(selected):
+        if selected == "Pawtucket Patriot":
+            callback()
+        else:
+            messagebox.showinfo("Wrong!", "Peter says: 'Nope! Try again, ya doof!'")
+
+    # Clear any existing widgets
+    for widget in parent_frame.winfo_children():
+        widget.destroy()
+
+    # Load the background image (using Pillow for JPEG)
+    image = Image.open("peter_drunk.jpg")
+    bg_image = ImageTk.PhotoImage(image)
+    bg_label = Label(parent_frame, image=bg_image)
+    bg_label.image = bg_image  # keep reference to prevent garbage collection
+    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+    # Add text and buttons with a valid background color
+    Label(parent_frame, text="Peter Quiz: What beer does Peter drink?",
+          font=("Arial", 20), fg="white", bg="black").pack(pady=20)
+    for option in ["Duff", "Pawtucket Patriot", "Bud Light"]:
+        tkinter.Button(parent_frame, text=option, command=lambda o=option: on_answer(o)).pack(pady=10)
+
+def interact_with_brian(parent_frame, callback):
+    def on_answer():
+        user_input = entry.get().strip().lower()
+        if "existentialism" in user_input:
+            callback()
+        else:
+            messagebox.showinfo("Brian", "Try something more... philosophical.")
+
+    # Clear any existing widgets
+    for widget in parent_frame.winfo_children():
+        widget.destroy()
+
+    # Load the background image (using Pillow for JPEG)
+    image = Image.open("brian.jpeg")
+    bg_image = ImageTk.PhotoImage(image)
+    bg_label = Label(parent_frame, image=bg_image)
+    bg_label.image = bg_image
+    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+    # Create UI elements on top of the background
+    Label(parent_frame, text="Brian: Finish the line - 'Life is just...'",
+          font=("Arial", 20), fg="white", bg="black").pack(pady=20)
+    entry = Entry(parent_frame, font=("Arial", 16))
+    entry.pack(pady=10)
+    tkinter.Button(parent_frame, text="Submit", command=on_answer).pack(pady=10)
+
+def interact_with_meg(parent_frame, callback):
+    def on_choice(selected):
+        if selected == "You're strong and independent":
+            callback()
+        else:
+            messagebox.showinfo("Meg", "Meg says: 'Ugh, typical.'")
+
+    # Clear any existing widgets
+    for widget in parent_frame.winfo_children():
+        widget.destroy()
+
+    image = Image.open("meg.jpg")
+    bg_image = ImageTk.PhotoImage(image)
+    bg_label = Label(parent_frame, image=bg_image)
+    bg_label.image = bg_image
+    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+    # For Meg we keep a plain background as specified
+    Label(parent_frame, text="Meg: Compliment me or I'm not helping!",
+          font=("Arial", 20), fg="white", bg="black").pack(pady=20)
+    compliments = [
+        "You're cool I guess",
+        "You're strong and independent",
+        "Nice hat"
+    ]
+    for c in compliments:
+        tkinter.Button(parent_frame, text=c, command=lambda x=c: on_choice(x)).pack(pady=10)
+
+def interact_with_chris(parent_frame, callback):
+    def on_answer():
+        guess = entry.get().strip()
+        if guess.lower() == "cheeseburger":
+            callback()
+        else:
+            messagebox.showinfo("Chris", "Chris giggles: 'Nope, that's not what I drew!'")
+
+    # Clear any existing widgets
+    for widget in parent_frame.winfo_children():
+        widget.destroy()
+
+    # Load the background image (GIF supported by Tkinter's PhotoImage)
+    chris_img = PhotoImage(file="chris.gif")
+    bg_label = Label(parent_frame, image=chris_img)
+    bg_label.image = chris_img  # keep a reference to prevent garbage collection
+    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+    # Create UI elements on top of the background
+    Label(parent_frame, text="Chris drew a picture. What do you think it is?",
+          font=("Arial", 20), fg="white", bg="black").pack(pady=20)
+    entry = Entry(parent_frame, font=("Arial", 16))
+    entry.pack(pady=10)
+    tkinter.Button(parent_frame, text="Guess", command=on_answer).pack(pady=10)
+
+# EXTEND Lcd CLASS WITH FAMILY GUY INTERACTIONS
+def lcd_family_guy_extensions():
+    def launchPeterPhase(self):
+        interact_with_peter(self, self.launchBrianPhase)
+    def launchBrianPhase(self):
+        interact_with_brian(self, self.launchMegPhase)
+    def launchMegPhase(self):
+        interact_with_meg(self, self.launchChrisPhase)
+    def launchChrisPhase(self):
+        interact_with_chris(self, self.setup)
+
+    Lcd.launchPeterPhase = launchPeterPhase
+    Lcd.launchBrianPhase = launchBrianPhase
+    Lcd.launchMegPhase = launchMegPhase
+    Lcd.launchChrisPhase = launchChrisPhase
+
+lcd_family_guy_extensions()
+
+# RUN ENTRY POINT
+if __name__ == "__main__":
+    root = Tk()
+    lcd = Lcd(root)
+    lcd.launchPeterPhase()  # Start with Peter interaction
+    lcd.pack(expand=True, fill="both")
+    root.mainloop()
