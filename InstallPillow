@@ -9,3 +9,6 @@ digitalio              # Used to define pin directions and pull-up/down
 import tkinter as tk
  from tkinter import Canvas
 
+pip3 install Pillow
+
+
