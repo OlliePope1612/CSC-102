@@ -1,11 +1,11 @@
 #################################
 # CSC 102 Defuse the Bomb Project
 # Configuration file
-# Team: 
+# Team:
 #################################
 
 # constants
-DEBUG = True        # debug mode?
+DEBUG = False        # debug mode?
 RPi = True           # is this running on the RPi?
 ANIMATE = True       # animate the LCD text?
 SHOW_BUTTONS = False # show the Pause and Quit buttons on the main LCD GUI?
