@@ -1,7 +1,7 @@
 #################################
 # CSC 102 Defuse the Bomb Project
 # GUI and Phase class definitions
-# Team: Oliver Pope, Eddie McKenna, Dilan Kochhar
+# Team:
 #################################
 
 # import the configs
@@ -9,14 +9,10 @@ from bomb_configs import *
 # other imports
 from tkinter import *
 import tkinter
-from tkinter import messagebox, PhotoImage
 from threading import Thread
 from time import sleep
 import os
 import sys
-
-# Import Pillow to handle JPEG images
-from PIL import Image, ImageTk
 
 #########
 # classes
@@ -43,6 +39,7 @@ class Lcd(Frame):
         # the scrolling informative "boot" text
         self._lscroll = Label(self, bg="black", fg="white", font=("Courier New", 14), text="", justify=LEFT)
         self._lscroll.grid(row=0, column=0, columnspan=3, sticky=W)
+        self.pack(fill=BOTH, expand=True)
 
     # sets up the LCD GUI
     def setup(self):
@@ -125,127 +122,6 @@ class Lcd(Frame):
                 pin.value = True
         # exit the application
         exit(0)
-        
-        # === FAMILY GUY INTERACTION GAME START ===
-
-    def interact_with_peter(parent_frame, callback):
-        def on_answer(selected):
-            if selected == "Pawtucket Patriot":
-                callback()
-            else:
-                messagebox.showinfo("Wrong!", "Peter says: 'Nope! Try again, ya doof!'")
-
-        # Clear any existing widgets
-        for widget in parent_frame.winfo_children():
-            widget.destroy()
-
-        # Load the background image (using Pillow for JPEG)
-        image = Image.open("peter_drunk.jpg")
-        bg_image = ImageTk.PhotoImage(image)
-        bg_label = Label(parent_frame, image=bg_image)
-        bg_label.image = bg_image  # keep reference to prevent garbage collection
-        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-
-        # Add text and buttons with a valid background color
-        Label(parent_frame, text="Peter Quiz: What beer does Peter drink?",
-              font=("Arial", 20), fg="white", bg="black").pack(pady=20)
-        for option in ["Duff", "Pawtucket Patriot", "Bud Light"]:
-            tkinter.Button(parent_frame, text=option, command=lambda o=option: on_answer(o)).pack(pady=10)
-
-    def interact_with_brian(parent_frame, callback):
-        def on_answer():
-            user_input = entry.get().strip().lower()
-            if "hhhhhh" in user_input:
-                callback()
-            else:
-                messagebox.showinfo("Brian", "Try something more... philosophical.")
-
-        # Clear any existing widgets
-        for widget in parent_frame.winfo_children():
-            widget.destroy()
-
-        # Load the background image (using Pillow for JPEG)
-        image = Image.open("brian.jpeg")
-        bg_image = ImageTk.PhotoImage(image)
-        bg_label = Label(parent_frame, image=bg_image)
-        bg_label.image = bg_image
-        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-
-        # Create UI elements on top of the background
-        Label(parent_frame, text="Brian: Finish the line - 'Life is just...'",
-              font=("Arial", 20), fg="white", bg="black").pack(pady=20)
-        entry = Entry(parent_frame, font=("Arial", 16))
-        entry.pack(pady=10)
-        tkinter.Button(parent_frame, text="Submit", command=on_answer).pack(pady=10)
-
-    def interact_with_meg(parent_frame, callback):
-        def on_choice(selected):
-            if selected == "You're strong and independent":
-                callback()
-            else:
-                messagebox.showinfo("Meg", "Meg says: 'Ugh, typical.'")
-
-        # Clear any existing widgets
-        for widget in parent_frame.winfo_children():
-            widget.destroy()
-
-        image = Image.open("meg.jpg")
-        bg_image = ImageTk.PhotoImage(image)
-        bg_label = Label(parent_frame, image=bg_image)
-        bg_label.image = bg_image
-        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-
-        # For Meg we keep a plain background as specified
-        Label(parent_frame, text="Meg: Compliment me or I'm not helping!",
-              font=("Arial", 20), fg="white", bg="black").pack(pady=20)
-        compliments = [
-            "You're cool I guess",
-            "You're strong and independent",
-            "Nice hat"
-        ]
-        for c in compliments:
-            tkinter.Button(parent_frame, text=c, command=lambda x=c: on_choice(x)).pack(pady=10)
-
-    def interact_with_chris(parent_frame, callback):
-        def on_answer():
-            guess = entry.get().strip().lower()
-            if guess == "cheeseburger":
-                callback()
-            else:
-                messagebox.showinfo("Chris", "Chris giggles: 'Nope, that's not what I drew!'")
-
-        # Clear any existing widgets
-        for widget in parent_frame.winfo_children():
-            widget.destroy()
-
-        # Load the background image (GIF supported by Tkinter's PhotoImage)
-        chris_img = PhotoImage(file="chris.gif")
-        bg_label = Label(parent_frame, image=chris_img)
-        bg_label.image = chris_img  # keep a reference to prevent garbage collection
-        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-
-        # Create UI elements on top of the background
-        Label(parent_frame, text="Chris drew a picture. What do you think it is?",
-              font=("Arial", 20), fg="white", bg="black").pack(pady=20)
-        entry = Entry(parent_frame, font=("Arial", 16))
-        entry.pack(pady=10)
-        tkinter.Button(parent_frame, text="Guess", command=on_answer).pack(pady=10)
-
-    # EXTEND Lcd CLASS WITH FAMILY GUY INTERACTIONS
-    def lcd_family_guy_extensions():
-        def launchPeterPhase(self):
-            Lcd.interact_with_peter(self, self.launchBrianPhase)
-        def launchBrianPhase(self):
-            Lcd.interact_with_brian(self, self.launchMegPhase)
-        def launchMegPhase(self):
-            Lcd.interact_with_meg(self, self.launchChrisPhase)
-        def launchChrisPhase(self):
-            Lcd.interact_with_chris(self, self.setup)
-
-        Lcd.launchPeterPhase = launchPeterPhase
-        Lcd.launchBrianPhase = launchBrianPhase
-        Lcd.launchMegPhase = launchMegPhase
-        Lcd.launchChrisPhase = launchChrisPhase
 
 # template (superclass) for various bomb components/phases
 class PhaseThread(Thread):
@@ -354,24 +230,18 @@ class Wires(PhaseThread):
     def __init__(self, component, target, name="Wires"):
         super().__init__(name, component, target)
 
+    # runs the thread
     def run(self):
-        self._running = True
-        while self._running:
-            wire_states = self._component  # A dictionary
-            correct = True
-            for wire, should_be_connected in self._target.items():
-                if wire_states.get(wire) != should_be_connected:
-                    correct = False
-                    break
-            if correct:
-                self._defused = True
-                self._running = False
-            sleep(0.1)
+        # TODO
+        pass
 
+    # returns the jumper wires state as a string
     def __str__(self):
-        if self._defused:
+        if (self._defused):
             return "DEFUSED"
-        return str(self._component)
+        else:
+            # TODO
+            pass
 
 # the pushbutton phase
 class Button(PhaseThread):
@@ -429,24 +299,68 @@ class Toggles(PhaseThread):
     def __init__(self, component, target, name="Toggles"):
         super().__init__(name, component, target)
 
+    # runs the thread
     def run(self):
-        self._running = True
-        while self._running:
-            toggle_state = ''.join(['1' if sw.value else '0' for sw in self._component])  # This takes binary string as input
-            if toggle_state == self._target:
-                self._defused = True
-                self._running = False
-            sleep(0.1)
+        # TODO
+        pass
 
+    # returns the toggle switches state as a string
     def __str__(self):
-        if self._defused:
+        if (self._defused):
             return "DEFUSED"
-        return ''.join(['1' if sw.value else '0' for sw in self._component])
+        else:
+            # TODO
+            pass
 
+import RPi.GPIO as GPIO
+import time
+from bomb_configs import RPi
 
+if (RPi):
+    from bomb_configs import BUTTON_PIN, SWITCH_PINS, KEYPAD_CODE
 
+def run_button_phase():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    for pin in SWITCH_PINS:
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+    def switches_correct():
+        required_states = [0, 1, 0, 1]
+        return all(GPIO.input(pin) == state for pin, state in zip(SWITCH_PINS, required_states))
 
-Lcd.lcd_family_guy_extensions()
+    def check_keypad_code():
+        KEYPAD_CODE = 8352
+        entered_code = get_keypad_input()
+        return entered_code == KEYPAD_CODE
 
+    def get_keypad_input():
+        code = ""
+        while len(code) < 4:
+            keys = component_keypad.pressed_keys
+            if keys:
+                if str(keys[0]) not in code:  # Avoid double entry if held
+                    code += str(keys[0])
+                    print(f"Keypad entry: {code}")
+                time.sleep(0.3)  # Debounce
 
+    # def button_pressed(channel):
+    #     print("Button held. Checking bomb status...")
+    #     hold_start = time.time()
+    #     while GPIO.input(BUTTON_PIN) == GPIO.LOW:
+    #         if time.time() - hold_start >= 3:
+    #             if switches_correct() and check_keypad_code():
+    #                 print("✅ Bomb defused successfully!")
+    #             else:
+    #                 print("💥 Wrong configuration! Bomb explodes.")
+    #             return
+    #     print("Button not held long enough.")
+
+    GPIO.add_event_detect(BUTTON_PIN, GPIO.FALLING, callback=button_pressed, bouncetime=500)
+    print("Waiting for button press...")
+    try:
+        while True:
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        GPIO.cleanup()
+        print("Exiting cleanly.")
