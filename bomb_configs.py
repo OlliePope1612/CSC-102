@@ -5,8 +5,24 @@
 #################################
 
 # constants
-DEBUG = False        # debug mode?
-RPi = True           # is this running on the RPi?
+
+# === MOCK RPi modules for testing on macOS ===
+import sys
+import types
+
+# Create mock versions of Raspberry Pi hardware libraries
+mock_modules = [
+    "board",
+    "digitalio",
+    "busio",
+    "adafruit_character_lcd"
+]
+
+for mod in mock_modules:
+    sys.modules[mod] = types.ModuleType(mod)
+
+DEBUG = True        # debug mode?
+RPi = False           # is this running on the RPi?
 ANIMATE = True       # animate the LCD text?
 SHOW_BUTTONS = False # show the Pause and Quit buttons on the main LCD GUI?
 COUNTDOWN = 300      # the initial bomb countdown value (seconds)
@@ -220,3 +236,4 @@ boot_text = f"Booting...\n\x00\x00"\
             f"*{' '.join(ascii_uppercase)}\n"\
             f"*{' '.join([str(n % 10) for n in range(26)])}\n"\
             f"Rendering phases...\x00"
+
