@@ -304,21 +304,32 @@ class Button(PhaseThread):
 class Toggles(PhaseThread):
     def __init__(self, component, target, name="Toggles"):
         super().__init__(name, component, target)
-    
+
     def run(self):
         self._running = True
         while self._running:
-            toggle_state = ''.join(['1' if sw.value else '0' for sw in self._component])  # Binary string
-            if toggle_state == self._target:
-                self._defused = True
-                self._running = False
+            # read each toggle’s state via .read()
+            bits = [str(int(pin.read())) for pin in self._component]
+            current = "".join(bits)
+
+            # Partial mismatch → strike
+            if not self._target.startswith(current):
+                self.fail()
+                return
+
+            # Full match → defuse
+            if current == self._target:
+                self.defuse()
+                return
+
             sleep(0.1)
 
     def __str__(self):
+        # if defused, show that
         if self._defused:
             return "DEFUSED"
-        return ''.join(['1' if sw.value else '0' for sw in self._component])
-
+        # otherwise show the live bits via .read()
+        return "".join("1" if pin.read() else "0" for pin in self._component)
 
 class Keypad(PhaseThread):
     def __init__(self, component, target, name="Keypad"):
