@@ -16,23 +16,21 @@ mock_modules = [
     "digitalio",
     "busio",
     "adafruit_character_lcd"
-]
-
 for mod in mock_modules:
     sys.modules[mod] = types.ModuleType(mod)
 
 DEBUG = True        # debug mode?
-RPi = False           # is this running on the RPi?
-ANIMATE = True       # animate the LCD text?
+RPi = False         # is this running on the RPi?
+ANIMATE = True      # animate the LCD text?
 SHOW_BUTTONS = False # show the Pause and Quit buttons on the main LCD GUI?
-COUNTDOWN = 300      # the initial bomb countdown value (seconds)
-NUM_STRIKES = 5      # the total strikes allowed before the bomb "explodes"
-NUM_PHASES = 4       # the total number of initial active bomb phases
+COUNTDOWN = 300     # the initial bomb countdown value (seconds)
+NUM_STRIKES = 5     # the total strikes allowed before the bomb "explodes"
+NUM_PHASES = 4      # the total number of initial active bomb phases
 
 # imports
 from random import randint, shuffle, choice
 from string import ascii_uppercase
-if (RPi):
+if RPi:
     import board
     from adafruit_ht16k33.segments import Seg7x4
     from digitalio import DigitalInOut, Direction, Pull
@@ -44,7 +42,7 @@ if (RPi):
 # 7-segment display
 # 4 pins: 5V(+), GND(-), SDA, SCL
 #         ----------7SEG---------
-if (RPi):
+if RPi:
     i2c = board.I2C()
     component_7seg = Seg7x4(i2c)
     # set the 7-segment display brightness (0 -> dimmest; 1 -> brightest)
@@ -53,7 +51,7 @@ if (RPi):
 # keypad
 # 8 pins: 10, 9, 11, 5, 6, 13, 19, NA
 #         -----------KEYPAD----------
-if (RPi):
+if RPi:
     # the pins
     keypad_cols = [DigitalInOut(i) for i in (board.D10, board.D9, board.D11)]
     keypad_rows = [DigitalInOut(i) for i in (board.D5, board.D6, board.D13, board.D19)]
@@ -66,7 +64,7 @@ if (RPi):
 # 10 pins: 14, 15, 18, 23, 24, 3V3, 3V3, 3V3, 3V3, 3V3
 #          -------JUMP1------  ---------JUMP2---------
 # the jumper wire pins
-if (RPi):
+if RPi:
     # the pins
     component_wires = [DigitalInOut(i) for i in (board.D14, board.D15, board.D18, board.D23, board.D24)]
     for pin in component_wires:
@@ -77,7 +75,7 @@ if (RPi):
 # pushbutton
 # 6 pins: 4, 17, 27, 22, 3V3, 3V3
 #         -BUT1- -BUT2-  --BUT3--
-if (RPi):
+if RPi:
     # the state pin (state pin is input and pulled down)
     component_button_state = DigitalInOut(board.D4)
     component_button_state.direction = Direction.INPUT
@@ -92,13 +90,43 @@ if (RPi):
 # toggle switches
 # 3x3 pins: 12, 16, 20, 21, 3V3, 3V3, 3V3, 3V3, GND, GND, GND, GND
 #           -TOG1-  -TOG2-  --TOG3--  --TOG4--  --TOG5--  --TOG6--
-if (RPi):
+if RPi:
     # the pins
     component_toggles = [DigitalInOut(i) for i in (board.D12, board.D16, board.D20, board.D21)]
     for pin in component_toggles:
         # pins are input and pulled down
         pin.direction = Direction.INPUT
         pin.pull = Pull.DOWN
+
+# ────────── Mock hardware for macOS/DEBUG mode ──────────
+if not RPi:
+    class MockSeg7x4:
+        def __init__(self):     self.blink_rate = 0
+        def print(self, s):     pass
+        def fill(self, v):      pass
+
+    class MockKeypad:
+        def __init__(self):     self.pressed_keys = []
+
+    class MockWire:
+        def __init__(self, idx): self._idx, self._cut = idx, False
+        def is_cut(self):        return self._cut
+        def cut(self):           self._cut = True
+
+    class MockDigitalInOut:
+        def __init__(self):     self.value = False
+        def read(self):         return self.value
+
+    class MockTogglePin:
+        def __init__(self):     self.value = False
+        def read(self):         return self.value
+
+    component_7seg         = MockSeg7x4()
+    component_keypad       = MockKeypad()
+    component_wires        = [MockWire(i) for i in range(5)]
+    component_button_state = MockDigitalInOut()
+    component_button_RGB   = [MockDigitalInOut() for _ in range(3)]
+    component_toggles      = [MockTogglePin()  for _ in range(4)]
 
 ###########
 # functions
