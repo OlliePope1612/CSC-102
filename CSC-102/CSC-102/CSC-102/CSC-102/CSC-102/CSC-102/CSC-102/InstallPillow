@@ -1,0 +1,14 @@
+pillow                  # For image handling with Tkinter (Image, ImageTk)
+tk                     # For GUI support (automatically included in most Python installations)
+adafruit-circuitpython-ht16k33  # For 7-segment display support
+adafruit-circuitpython-matrixkeypad  # For keypad support
+gpiozero               # For general GPIO access (for button, wires, toggles, etc.)
+board                  # Needed for pin definitions on Raspberry Pi
+digitalio              # Used to define pin directions and pull-up/down
+
+import tkinter as tk
+ from tkinter import Canvas
+
+pip3 install Pillow
+
+

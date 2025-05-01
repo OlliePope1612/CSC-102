@@ -1,0 +1,81 @@
+1. Simon Says (Color Memory Game)
+	•	4 colored LEDs light up in a sequence.
+	•	Player must repeat the pattern using buttons or keypad.
+	•	Each round, the sequence gets longer.
+
+Defuse Rule: Repeat the sequence correctly 3 times in a row.
+
+⸻
+
+2. Wire Cutting Logic Puzzle
+	•	5 wires with different colors.
+	•	Serial number + rules determine which wire to cut:
+	•	“If the last digit of the serial is odd, cut the red wire.”
+	•	“If there are two blue wires, cut the second one.”
+
+Defuse Rule: Cut correct wire based on logic.
+
+⸻
+
+3. Morse Code Decoder
+	•	LED or speaker blinks/beeps Morse code.
+	•	User must decode the message and enter the correct word on the keypad.
+
+Defuse Rule: Enter correct translated word.
+
+⸻
+
+4. Countdown Panic Button
+	•	One big button changes LED colors.
+	•	Player must press it only when a condition is met (e.g., when it turns green and countdown ends in “3”).
+
+Defuse Rule: Press it at the right moment, or it fails.
+
+⸻
+
+5. Toggle Switches Pattern
+	•	4 toggle switches.
+	•	Serial number determines which switches must be “ON” or “OFF.”
+	•	Pattern might come from binary version of serial digit sum.
+
+Defuse Rule: Match the required toggle configuration.
+
+⸻
+
+6. Math Bomb
+	•	Random math question shows on LCD.
+	•	Player uses keypad to enter answer (e.g., 15 + 47 or √64).
+
+Defuse Rule: Correct answer within 15 seconds.
+
+⸻
+
+7. Voice Recognition (Advanced)
+	•	Say a secret phrase into a mic.
+	•	Use pre-recorded keyword to verify.
+
+Defuse Rule: Match audio profile or phrase (optional if you want bonus challenge).
+
+⸻
+
+8. Fingerprint Scanner (Fake)
+	•	Use a tactile button or capacitive sensor.
+	•	Display says “Place finger to scan” — just a timing game.
+
+Defuse Rule: Press and hold for exactly 3 seconds.
+
+⸻
+
+9. Code Cracker (Keypad)
+	•	Hidden 4-digit code.
+	•	Hints displayed on screen after each wrong try (e.g., “1 digit correct”).
+
+Defuse Rule: Guess code before strikes run out.
+
+⸻
+
+10. Light Sensor Trick
+	•	Cover or uncover a light sensor to trigger.
+	•	LCD says: “Bomb is armed. Don’t let it see light!”
+
+Defuse Rule: Keep sensor covered for 10 seconds.

@@ -1,0 +1,80 @@
+import random
+import time
+
+# Characters' comments
+quagmire_lines = ["Giggity! This bomb's got curves.", "I'd tap that... wire.", "Giggity giggity goo!"]
+joe_lines = ["MY WHEELCHAIR'S DEAD!", "HELP! PUSH ME CLOSER!", "PETER, YOU'RE OUR ONLY HOPE!"]
+cleveland_lines = ["No no no no NO!", "Oh, that's not good...", "I'm getting outta here!"]
+
+# Side effects of wrong moves
+side_effects = [
+    "A swarm of bees attacks Peter!",
+    "Fireworks explode inside the bar!",
+    "'Who Let the Dogs Out' blasts at full volume!",
+    "The floor turns into quicksand!",
+    "A chicken falls from the ceiling!"
+]
+
+# Wires to choose from
+wires = ["blue", "red", "yellow", "green"]
+
+# Start of the game
+print("\n--- FAMILY GUY: PETER GRIFFIN BOMB SQUAD ---\n")
+print("Peter Griffin has been hired to defuse bombs around Quahog!")
+input("Press ENTER to continue...")
+
+print("\nPeter arrives at the Drunken Clam. There's a bomb with flashing lights!")
+print("The timer shows 5:00 minutes!")
+print("Quagmire, Joe, and Cleveland are panicking around him.\n")
+
+# Set up timer
+start_time = time.time()
+end_time = start_time + 300  # 5 minutes
+
+# Randomly pick correct wire
+correct_wire = random.choice(wires)
+
+# Fake chaotic instructions
+print("INSTRUCTIONS:")
+print("- Cut the BLUE wire. Unless it's feeling sad. Then cut the YELLOW wire.")
+print("- If the timer has a 7 in it, stop and do a chicken dance.\n")
+
+# Gameplay loop
+while time.time() < end_time:
+    # Display random character lines
+    print(random.choice(quagmire_lines))
+    print(random.choice(joe_lines))
+    print(random.choice(cleveland_lines))
+
+    print("\nAvailable wires: blue, red, yellow, green")
+    choice = input("Which wire will Peter cut? ").strip().lower()
+
+    # 20% chance to fake a 7 appearing
+    if random.randint(1, 5) == 1:
+        print("THE TIMER HAS A 7! Peter stops to do a chicken dance. (He wastes 10 seconds.)")
+        time.sleep(2)
+        end_time -= 10
+
+    # Check if choice is correct
+    if choice == correct_wire:
+        print("\nPeter fumbles... but somehow CUTS THE RIGHT WIRE!")
+        print("The bomb powers down. The Drunken Clam is saved!")
+        break
+    else:
+        print("\nPeter cut the wrong wire!")
+        print(random.choice(side_effects))
+        print("The bomb beeps faster! Hurry up!\n")
+        end_time -= 15  # Penalty for wrong move
+
+else:
+    print("\nThe bomb explodes in cartoon fashion, launching Peter through a wall!")
+    print("(Don't worry, everyone is fine because physics don't exist here.)")
+
+# Final cutscene
+print("\nAt the last second, Stewie and Brian arrive.")
+print("Stewie casually vaporizes the bomb remains with a laser gun.")
+print("Stewie: 'Honestly, if humanity's fate rested in his hands, we deserved extinction anyway.'")
+
+print("\nPeter still takes full credit and gets Employee of the Month!")
+print("Peter sits down on another bomb by accident. THE CYCLE BEGINS AGAIN.")
+print("\n--- THE END ---")
