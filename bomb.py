@@ -7,6 +7,10 @@ from tkinter import Tk
 from bomb_configs import *        # brings in component_7seg, component_keypad, etc., plus COUNTDOWN, targets, RPi
 from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd
 
+### REMOVE!!!!!
+from threading import Thread
+from time import sleep
+
 ###########
 # Helper functions
 ###########
@@ -31,6 +35,14 @@ def setup_phases():
     for phase in (timer, keypad, wires, button, toggles):
         phase.start()
 
+        # demo‐mode auto‐cut for the Wires phase (macOS mock)
+    if not RPi:
+        def demo_cut_wires():
+            # cut each mock wire in order
+            for pin in component_wires:
+                pin.cut()
+                sleep(0.1)
+        Thread(target=demo_cut_wires, daemon=True).start()
 
 def check_phases():
     global strikes_left, active_phases
