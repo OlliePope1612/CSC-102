@@ -16,6 +16,8 @@ mock_modules = [
     "digitalio",
     "busio",
     "adafruit_character_lcd"
+]
+
 for mod in mock_modules:
     sys.modules[mod] = types.ModuleType(mod)
 
