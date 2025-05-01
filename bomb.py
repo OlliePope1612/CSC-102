@@ -82,10 +82,7 @@ def start_game():
 ###########
 
 window = Tk()
-gui    = Lcd(window)
-
-# 1s delay then scroll the boot text
-gui.after(1000, bootup)
+gui = Lcd(window)
 
 # after boot scroll finishes, kick off the real GUI & logic
 boot_duration = 1000 + len(boot_text) * 50
