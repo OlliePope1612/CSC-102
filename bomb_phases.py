@@ -139,7 +139,16 @@ class PhaseThread(Thread):
         self._value = None
         # phase threads are either running or not
         self._running = False
+        
+    def defuse(self):
+        """Mark this phase as defused and stop its thread."""
+        self._defused = True
+        self._running = False
 
+    def fail(self):
+        """Mark this phase as failed (strike) and stop its thread."""
+        self._failed  = True
+        self._running = False
 # the timer phase
 class Timer(PhaseThread):
     def __init__(self, component, initial_value, name="Timer"):
