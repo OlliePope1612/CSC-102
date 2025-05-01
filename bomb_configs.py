@@ -128,7 +128,7 @@ if not RPi:
     component_wires        = [MockWire(i) for i in range(5)]
     component_button_state = MockDigitalInOut()
     component_button_RGB   = [MockDigitalInOut() for _ in range(3)]
-    component_toggles      = [MockTogglePin()  for _ in range(4)]
+    component_toggles      = [MockTogglePin()  for _ in range(3)]
 
 ###########
 # functions
