@@ -230,18 +230,20 @@ class Keypad(PhaseThread):
 # the jumper wires phase
 class Wires(PhaseThread):
     def __init__(self, component, target_str):
-        target = {i: True for i, bit in enumerate(target_str) if bit == '1'}
+        # Store the exact target string (e.g. "01101")
+        self._target_str = target_str
+        # Build a dict for the run logic
+        target = {i: True for i, b in enumerate(target_str) if b == '1'}
         super().__init__("Wires", component, target)
 
     def run(self):
+        cut_sequence = []
+        self._running = True
         target_sequence = list(self._target.keys())
-        cut_sequence   = []
-        self._running  = True
-
         while self._running:
-            for i, wire in enumerate(self._component):
-                if wire.is_cut() and i not in cut_sequence:
-                    cut_sequence.append(i)
+            for idx, wire in enumerate(self._component):
+                if wire.is_cut() and idx not in cut_sequence:
+                    cut_sequence.append(idx)
                     if len(cut_sequence) == len(target_sequence):
                         if cut_sequence == target_sequence:
                             self.defuse()
@@ -251,8 +253,13 @@ class Wires(PhaseThread):
             sleep(0.1)
 
     def __str__(self):
-        return ''.join('1' if wire.is_cut() else '0'
-                       for wire in self._component)
+        # Build the current bits string
+        bits = ''.join('1' if wire.is_cut() else '0' for wire in self._component)
+        # If it’s defused or already matches the target, show DEFUSED
+        if self._defused or bits == self._target_str:
+            return "DEFUSED"
+        # Otherwise show the running bits
+        return bits
 
 # the pushbutton phase
 class Button(PhaseThread):
