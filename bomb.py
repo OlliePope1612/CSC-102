@@ -11,6 +11,16 @@ from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Togg
 from threading import Thread
 from time import sleep
 
+# Dialogue for family guy
+dialogues = {
+    'intro':   "Stewie: At long last, Quahog will be no more! Brian: Oh dear, we must act fast!",
+    'Keypad':  "Brian: Nice job cracking the code! Now sever the correct circuits.",
+    'Wires':   "Brian: Wires cut! Next flip the family crests.",
+    'Toggles': "Brian: Toggles set! Now press the button at the right time.",
+    'Button':  "Brian: Button done! Final override to finish this.",
+    'Defused': "Brian: You saved Quahog! Hooray."
+}
+
 ###########
 # Helper functions
 ###########
