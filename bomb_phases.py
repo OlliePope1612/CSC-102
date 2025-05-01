@@ -229,9 +229,6 @@ class Keypad(PhaseThread):
 class Wires(PhaseThread):
     def __init__(self, component, target, name="Wires"):
         super().__init__(name, component, target)
-
-    # runs the thread
-    def run(self):
     
     def run(self):
         self._running = True
@@ -269,48 +266,43 @@ class Button(PhaseThread):
         self._timer = timer
 
     # runs the thread
+class Button(PhaseThread):
+    def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
+        super().__init__(name, state_pin, target)
+        self._rgb = rgb_pins
+        self._color = color
+        self._timer = timer
+        self._pressed = False
+        self._value = False
+
     def run(self):
+        # set the LED
+        self._rgb[0].value = (self._color != "R")
+        self._rgb[1].value = (self._color != "G")
+        self._rgb[2].value = (self._color != "B")
+
         self._running = True
-        # set the RGB LED color
-        self._rgb[0].value = False if self._color == "R" else True
-        self._rgb[1].value = False if self._color == "G" else True
-        self._rgb[2].value = False if self._color == "B" else True
-        while (self._running):
-            # get the pushbutton's state
-            self._value = self._component.value
-            # it is pressed
-            if (self._value):
-                # note it
+        while self._running:
+            current = self._component.value
+            if current and not self._pressed:
+                # button just pressed
                 self._pressed = True
-            # it is released
-            else:
-                # was it previously pressed?
-                if (self._pressed):
-                    # check the release parameters
-                    # for R, nothing else is needed
-                    # for G or B, a specific digit must be in the timer (sec) when released
-                    if (not self._target or self._target in self._timer._sec):
-                        self._defused = True
-                    else:
-                        self._failed = True
-                    # note that the pushbutton was released
-                    self._pressed = False
+            if not current and self._pressed:
+                # just released
+                if (self._target is None) or (str(self._target) in self._timer._sec):
+                    self.defuse()
+                else:
+                    self.fail()
+                return
             sleep(0.1)
 
-    # returns the pushbutton's state as a string
     def __str__(self):
-        if (self._defused):
-            return "DEFUSED"
-        else:
-            return str("Pressed" if self._value else "Released")
+        return "DEFUSED" if self._defused else ("Pressed" if self._pressed else "Released")
 
 # the toggle switches phase
 class Toggles(PhaseThread):
     def __init__(self, component, target, name="Toggles"):
         super().__init__(name, component, target)
-
-    # runs the thread
-    def run(self):
     
     def run(self):
         self._running = True
@@ -327,3 +319,33 @@ class Toggles(PhaseThread):
         return ''.join(['1' if sw.value else '0' for sw in self._component])
 
 
+class Keypad(PhaseThread):
+    def __init__(self, component, target, name="Keypad"):
+        super().__init__(name, component, target)
+        self._value = ""
+
+    def run(self):
+        """
+        Read pressed_keys in order, build up the entry string,
+        defuse on full match, fail on any wrong prefix.
+        """
+        self._running = True
+        while self._running:
+            if self._component.pressed_keys:
+                # debounce: grab the first key only once
+                key = self._component.pressed_keys[0]
+                # wait until it’s released
+                while self._component.pressed_keys:
+                    sleep(0.05)
+                # append and check
+                self._value += str(key)
+                if self._value == self._target:
+                    self.defuse()
+                    return
+                if not self._target.startswith(self._value):
+                    self.fail()
+                    return
+            sleep(0.1)
+
+    def __str__(self):
+        return "DEFUSED" if self._defused else self._value
