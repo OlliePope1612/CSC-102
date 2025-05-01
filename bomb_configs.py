@@ -24,9 +24,9 @@ for mod in mock_modules:
 DEBUG = True        # debug mode?
 RPi = False         # is this running on the RPi?
 ANIMATE = True      # animate the LCD text?
-SHOW_BUTTONS = False # show the Pause and Quit buttons on the main LCD GUI?
+SHOW_BUTTONS = True # show the Pause and Quit buttons on the main LCD GUI?
 COUNTDOWN = 300     # the initial bomb countdown value (seconds)
-NUM_STRIKES = 5     # the total strikes allowed before the bomb "explodes"
+NUM_STRIKES = 0     # the total strikes allowed before the bomb "explodes"
 NUM_PHASES = 5      # the total number of initial active bomb phases
 
 # imports
