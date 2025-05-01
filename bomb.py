@@ -38,10 +38,11 @@ def setup_phases():
         # demo‐mode auto‐cut for the Wires phase (macOS mock)
     if not RPi:
         def demo_cut_wires():
-            # cut each mock wire in order
-            for pin in component_wires:
-                pin.cut()
-                sleep(0.1)
+            bits = bin(wires_target)[2:].zfill(5)
+            for idx, bit in enumerate(bits):
+                if bit == "1":
+                    component_wires[idx].cut()
+                    sleep(0.1)
         Thread(target=demo_cut_wires, daemon=True).start()
 
 def check_phases():
