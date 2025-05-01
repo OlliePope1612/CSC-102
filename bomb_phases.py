@@ -103,8 +103,7 @@ class Lcd(Frame):
         img = img.resize((300,300), Image.ANTIALIAS)
         photo = ImageTk.PhotoImage(img)
         Label(self, image=photo, bg="black").place(relx=0.5, rely=0.6, anchor="center")
-        Keep a reference so it doesn’t get garbage-collected:
-        self._banner_img = photo
+        self._banner_img = "peter_drunk.jpg"
 
         # place Retry + Quit buttons below the banner
         btn_y = 0.8
