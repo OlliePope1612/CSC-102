@@ -76,6 +76,26 @@ def start_game():
         setup_phases()
         window.after(100, check_phases)
 
+# generates the bootup sequence on the LCD
+def bootup(n=0):
+    # if we’re done animating (or not animating at all)
+    if (not ANIMATE or n == len(boot_text)):
+        # if not animating, just dump the full text
+        if (not ANIMATE):
+            gui._lscroll["text"] = boot_text.replace("\x00", "")
+        # switch to the live GUI
+        gui.setup()
+        # only start the threads on the Pi
+        if RPi:
+            setup_phases()
+            window.after(100, check_phases)
+    else:
+        # append the next character (skip the pause-marker \x00)
+        if (boot_text[n] != "\x00"):
+            gui._lscroll["text"] += boot_text[n]
+        # schedule the next scroll
+        delay = 25 if boot_text[n] != "\x00" else 750
+        gui.after(delay, bootup, n + 1)
 
 ###########
 # MAIN
@@ -84,6 +104,7 @@ def start_game():
 window = Tk()
 gui = Lcd(window)
 
+gui.after(1000, bootup)
 # after boot scroll finishes, kick off the real GUI & logic
 boot_duration = 1000 + len(boot_text) * 50
 gui.after(boot_duration, start_game)
