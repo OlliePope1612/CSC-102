@@ -82,7 +82,7 @@ class Lcd(Frame):
         if (RPi):
             self._timer.pause()
 
-        def conclusion(self, success=False):
+    def conclusion(self, success=False):
         # clear out all phase widgets
         for widget in self.winfo_children():
             widget.destroy()
