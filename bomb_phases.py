@@ -82,27 +82,39 @@ class Lcd(Frame):
         if (RPi):
             self._timer.pause()
 
-    # setup the conclusion GUI (explosion/defusion)
-    def conclusion(self, success=False):
-        # destroy/clear widgets that are no longer needed
-        self._lscroll["text"] = ""
-        self._ltimer.destroy()
-        self._lkeypad.destroy()
-        self._lwires.destroy()
-        self._lbutton.destroy()
-        self._ltoggles.destroy()
-        self._lstrikes.destroy()
-        if (SHOW_BUTTONS):
-            self._bpause.destroy()
-            self._bquit.destroy()
+        def conclusion(self, success=False):
+        # clear out all phase widgets
+        for widget in self.winfo_children():
+            widget.destroy()
 
-        # reconfigure the GUI
-        # the retry button
-        self._bretry = tkinter.Button(self, bg="red", fg="white", font=("Courier New", 18), text="Retry", anchor=CENTER, command=self.retry)
-        self._bretry.grid(row=1, column=0, pady=40)
-        # the quit button
-        self._bquit = tkinter.Button(self, bg="red", fg="white", font=("Courier New", 18), text="Quit", anchor=CENTER, command=self.quit)
-        self._bquit.grid(row=1, column=2, pady=40)
+        # set up a full-screen banner Label
+        banner_text = "DEFUSED!" if success else "💥 BOOM! 💥"
+        banner_color = "#00ff00" if success else "#ff0000"
+        banner = Label(self,
+                       text=banner_text,
+                       bg="black",
+                       fg=banner_color,
+                       font=("Courier New", 48, "bold"),
+                       justify=CENTER)
+        banner.place(relx=0.5, rely=0.4, anchor="center")
+
+        from PIL import Image, ImageTk
+        img = Image.open("boom.jpg" if not success else "yayyy.jpg")
+        img = img.resize((300,300), Image.ANTIALIAS)
+        photo = ImageTk.PhotoImage(img)
+        Label(self, image=photo, bg="black").place(relx=0.5, rely=0.6, anchor="center")
+        Keep a reference so it doesn’t get garbage-collected:
+        self._banner_img = photo
+
+        # place Retry + Quit buttons below the banner
+        btn_y = 0.8
+        self._bretry = Button(self, text="Retry", font=("Courier New", 18),
+                              bg="gray20", fg="white", command=self.retry)
+        self._bretry.place(relx=0.3, rely=btn_y, anchor="center")
+
+        self._bquit  = Button(self, text="Quit",  font=("Courier New", 18),
+                              bg="gray20", fg="white", command=self.quit)
+        self._bquit.place(relx=0.7, rely=btn_y, anchor="center")
 
     # re-attempts the bomb (after an explosion or a successful defusion)
     def retry(self):
