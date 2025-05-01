@@ -251,8 +251,8 @@ class Wires(PhaseThread):
             sleep(0.1)
 
     def __str__(self):
-        return "DEFUSED" if self._defused else str(self._component)
-
+        return ''.join('1' if wire.is_cut() else '0'
+                       for wire in self._component)
 
 # the pushbutton phase
 class Button(PhaseThread):
