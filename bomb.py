@@ -27,7 +27,7 @@ def setup_phases():
     button  = Button(component_button_state,
                      component_button_RGB,
                      button_target, button_color, timer)
-    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(4))
+    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(3))
 
     gui.setTimer(timer)
     gui.setButton(button)
