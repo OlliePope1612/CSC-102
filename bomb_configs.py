@@ -94,7 +94,7 @@ if RPi:
 #           -TOG1-  -TOG2-  --TOG3--  --TOG4--  --TOG5--  --TOG6--
 if RPi:
     # the pins
-    component_toggles = [DigitalInOut(i) for i in (board.D12, board.D16, board.D20]
+    component_toggles = [DigitalInOut(i) for i in (board.D12, board.D16, board.D20)]
     for pin in component_toggles:
         # pins are input and pulled down
         pin.direction = Direction.INPUT
