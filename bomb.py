@@ -66,15 +66,9 @@ def check_phases():
 
 
 def start_game():
-    # Build the live‐game GUI
     gui.setup()
-
-    # Only on a real Pi do we spin up the hardware threads;
-    # on macOS this just leaves the labels in place (you could
-    # manually poke them via the REPL if needed)
-    if RPi:
-        setup_phases()
-        window.after(100, check_phases)
+    setup_phases()
+    window.after(100, check_phases)
 
 # generates the bootup sequence on the LCD
 def bootup(n=0):
