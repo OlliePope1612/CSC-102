@@ -227,27 +227,29 @@ class Keypad(PhaseThread):
 
 # the jumper wires phase
 class Wires(PhaseThread):
-    def __init__(self, component, target, name="Wires"):
-        super().__init__(name, component, target)
-    
+    def __init__(self, component, target_str):
+        target = {i: True for i, bit in enumerate(target_str) if bit == '1'}
+        super().__init__("Wires", component, target)
+
     def run(self):
-        self._running = True
+        target_sequence = list(self._target.keys())
+        cut_sequence   = []
+        self._running  = True
+
         while self._running:
-            wire_states = self._component  # Dictionary like {"A": True, "B": False, ...}
-            correct = True
-            for wire, should_be_connected in self._target.items():
-                if wire_states.get(wire) != should_be_connected:
-                    correct = False
-                    break
-            if correct:
-                self._defused = True
-                self._running = False
+            for i, wire in enumerate(self._component):
+                if wire.is_cut() and i not in cut_sequence:
+                    cut_sequence.append(i)
+                    if len(cut_sequence) == len(target_sequence):
+                        if cut_sequence == target_sequence:
+                            self.defuse()
+                        else:
+                            self.fail()
+                        return
             sleep(0.1)
 
     def __str__(self):
-        if self._defused:
-            return "DEFUSED"
-        return str(self._component)
+        return "DEFUSED" if self._defused else str(self._component)
 
 
 # the pushbutton phase
@@ -325,10 +327,6 @@ class Keypad(PhaseThread):
         self._value = ""
 
     def run(self):
-        """
-        Read pressed_keys in order, build up the entry string,
-        defuse on full match, fail on any wrong prefix.
-        """
         self._running = True
         while self._running:
             if self._component.pressed_keys:
