@@ -1,0 +1,22 @@
+real time vs frame rate?
+
+next_t = time.time() + self._interval
+...
+if not self._paused and time.time() >= next_t:
+    self._value -= 1
+    ...
+    next_t += self._interval
+
+
+Use time.monotonic() instead of time.time()
+
+import time
+...
+next_t = time.monotonic() + self._interval
+while self._running:
+    now = time.monotonic()
+    if not self._paused and now >= next_t:
+        self._value -= 1
+        ...
+        next_t += self._interval
+
