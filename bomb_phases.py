@@ -95,7 +95,7 @@ class PhaseThread(Thread):
         self._component = component; self._target = target
         self._defused = False; self._failed = False; self._running = False
     def defuse(self): self._defused, self._running = True, False
-    def fail( self): self._failed,  self._running = True, False
+    def fail( self): self._failed,  self._running = True, True
 
 # Timer phase (precise 1Hz)
 class Timer(PhaseThread):
@@ -143,9 +143,9 @@ class Keypad(PhaseThread):
                     # submit
                     if self._value == self._target:
                         self.defuse()
+                        return
                     else:
                         self.fail()
-                    return
                 elif len(self._value) < len(self._target):
                     self._value += key
             sleep(0.1)
