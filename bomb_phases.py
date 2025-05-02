@@ -187,7 +187,14 @@ class Button(PhaseThread):
         self._rgb[1].value = (self._color=='G')
         self._rgb[2].value = (self._color=='B')
         self._running = True
+        now = time.time()
         while self._running:
+            if now - last_color_change >= 10:
+                self._color_index = (self._color_index + 1) % 3
+                self._color = self._colors[self._color_index]
+                self._set_color(self._color)
+                last_color_change = now
+                
             v = self._component.value
             if v and not self._pressed: self._pressed=True
             if not v and self._pressed:
