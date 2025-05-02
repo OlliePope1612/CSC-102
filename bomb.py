@@ -76,48 +76,6 @@ def setup_phases():
     for phase in (timer, keypad, wires, button, toggles):
         phase.start()
 
-def check_phases():
-    global strikes_left, active_phases
-
-    # 1) Refresh the labels once
-    try: gui._ltimer[  "text"] = f"Time left: {timer}"
-    except: pass
-    try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
-    except: pass
-    try: gui._lwires[  "text"] = f"Wires phase: {wires}"
-    except: pass
-    try: gui._lbutton["text"] = f"Button phase: {button}"
-    except: pass
-    try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
-    except: pass
-    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
-    except: pass
-
-    # 2) Handle any newly‐failed (strike) or newly‐defused phases
-    for phase in (keypad, wires, button, toggles):
-        if phase._failed:
-            strikes_left  -= 1
-            active_phases -= 1
-            phase._failed = False
-        if phase._defused:
-            active_phases -= 1
-            phase._defused = False
-
-    # 3) Decide whether to continue or finish
-    if strikes_left <= 0:
-        # You ran out of strikes ⇒ BOOM
-        gui.conclusion(success=False)
-    elif active_phases <= 0:
-        # All phases defused ⇒ SUCCESS
-        gui.conclusion(success=True)
-    else:
-        # Otherwise keep polling
-        gui.after(100, check_phases)
-def start_game():
-    gui.setup()
-    setup_phases()
-    window.after(100, check_phases)
-
 # generates the bootup sequence on the LCD
 def bootup(n=0):
     if (not ANIMATE or n == len(boot_text)):
