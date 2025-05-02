@@ -250,10 +250,13 @@ class Wires(PhaseThread):
     def run(self):
         cut_sequence = []
         self._running = True
-        target_sequence = list(self._target.keys())
+        # compute the numeric target sequence once
+        target_sequence = [int(c) for c in self._target_str]  # if you stored target as string
         while self._running:
             for idx, wire in enumerate(self._component):
-                if wire.is_cut() and idx not in cut_sequence:
+                # on real Pi use wire.value, on mock use wire.is_cut()
+                cut = wire.is_cut() if hasattr(wire, "is_cut") else wire.value
+                if cut and idx not in cut_sequence:
                     cut_sequence.append(idx)
                     if len(cut_sequence) == len(target_sequence):
                         if cut_sequence == target_sequence:
@@ -264,13 +267,12 @@ class Wires(PhaseThread):
             sleep(0.1)
 
     def __str__(self):
-        # Build the current bits string
-        bits = ''.join('1' if wire.is_cut() else '0' for wire in self._component)
-        # If it’s defused or already matches the target, show DEFUSED
-        if self._defused or bits == self._target_str:
-            return "DEFUSED"
-        # Otherwise show the running bits
-        return bits
+        bits = "".join(
+            "1" if (wire.is_cut() if hasattr(wire, "is_cut") else wire.value)
+            else "0"
+            for wire in self._component
+        )
+        return "DEFUSED" if self._defused else bits
 
 # the pushbutton phase
 class Button(PhaseThread):
@@ -318,29 +320,32 @@ class Toggles(PhaseThread):
 
     def run(self):
         self._running = True
+        prev = None
         while self._running:
-            # read each toggle’s state via .read()
-            bits = [str(int(pin.read())) for pin in self._component]
+            # read each toggle’s state (real .value or mock .read())
+            bits = [str(int(pin.read())) for pin in self._component] if hasattr(self._component[0], "read") \
+                   else [str(int(pin.value)) for pin in self._component]
             current = "".join(bits)
-
-            # Partial mismatch → strike
-            if not self._target.startswith(current):
-                self.fail()
-                return
-
-            # Full match → defuse
-            if current == self._target:
-                self.defuse()
-                return
-
+            
+            # only react on an actual change
+            if current != prev:
+                if not self._target.startswith(current):
+                    self.fail()
+                    return
+                if current == self._target:
+                    self.defuse()
+                    return
+                prev = current
             sleep(0.1)
 
     def __str__(self):
-        # if defused, show that
         if self._defused:
             return "DEFUSED"
-        # otherwise show the live bits via .read()
-        return "".join("1" if pin.read() else "0" for pin in self._component)
+        # prefer mock.read(), else .value
+        return "".join(
+            "1" if (pin.read() if hasattr(pin, "read") else pin.value) else "0"
+            for pin in self._component
+        )
 
 class Keypad(PhaseThread):
     def __init__(self, component, target, name="Keypad"):
