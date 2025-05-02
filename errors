@@ -1,8 +1,20 @@
-Exception in thread Button:
-Traceback (most recent call last):
-  File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
-    self.run()
-  File "/home/spartans/CSC-102/bomb_phases.py", line 240, in run
-    self._color_index = (self._color_index + 1) % len(self._colors)
-                                                      ^^^^^^^^^^^^
-AttributeError: 'Button' object has no attribute '_colors'. Did you mean: 'colors'?
+python3 - << 'EOF'
+from bomb_phases import Toggles
+from bomb_configs import toggles_target
+
+# Mock one “pin” per toggle
+class MockToggle:
+    def __init__(self, bit): self._bit = bit
+    def read(self): return self._bit
+
+bits = bin(toggles_target)[2:].zfill(len(MockToggle.__mro__))
+# Actually use the real length of component_toggles:
+# from bomb_configs import component_toggles
+# bits = bin(toggles_target)[2:].zfill(len(component_toggles))
+
+# build mocks & start
+tog = Toggles([MockToggle(int(b)) for b in bits], bits)
+tog.start()
+tog.join()
+print("Saw defuse:", tog._defused)
+EOF
