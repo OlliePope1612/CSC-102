@@ -12,6 +12,7 @@ from threading import Thread
 from time import sleep
 import os, sys
 from PIL import Image, ImageTk
+import time
 
 #########
 # GUI class
@@ -181,14 +182,20 @@ class Button(PhaseThread):
     def __init__(self, state, rgb, target, color, timer, name="Button"):
         super().__init__(name, state, target)
         self._rgb   = rgb; self._color = color; self._timer = timer; self._pressed=False
-    def run(self):
-        # correct polarity: True = LED on
+        self._colors = ['R', 'G', 'B']
+        self._color_index = self._colors.index(self._color) if self._color in self._colors else 0
+    def _set_color(self, color):
         self._rgb[0].value = (self._color=='R')
         self._rgb[1].value = (self._color=='G')
         self._rgb[2].value = (self._color=='B')
+    
+    def run(self):
+        
         self._running = True
-        now = time.time()
+        self._set_color(self._color)
+        last_color_change = time.time()
         while self._running:
+            now = time.time()
             if now - last_color_change >= 10:
                 self._color_index = (self._color_index + 1) % 3
                 self._color = self._colors[self._color_index]
