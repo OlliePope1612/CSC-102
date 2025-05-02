@@ -1,20 +1,4 @@
 python3 - << 'EOF'
-from bomb_phases import Toggles
-from bomb_configs import toggles_target
-
-# Mock one “pin” per toggle
-class MockToggle:
-    def __init__(self, bit): self._bit = bit
-    def read(self): return self._bit
-
-bits = bin(toggles_target)[2:].zfill(len(MockToggle.__mro__))
-# Actually use the real length of component_toggles:
-# from bomb_configs import component_toggles
-# bits = bin(toggles_target)[2:].zfill(len(component_toggles))
-
-# build mocks & start
-tog = Toggles([MockToggle(int(b)) for b in bits], bits)
-tog.start()
-tog.join()
-print("Saw defuse:", tog._defused)
+from bomb_configs import component_toggles
+print("Number of toggles:", len(component_toggles))
 EOF
