@@ -7,7 +7,7 @@ joe_lines = ["MY WHEELCHAIR'S DEAD!", "HELP! PUSH ME CLOSER!", "PETER, YOU'RE OU
 cleveland_lines = ["No no no no NO!", "Oh, that's not good...", "I'm getting outta here!"]
 
 # --- Setup ---
-correct_code = "42069"
+correct_code = "Random"
 correct_wire = "orange"
 correct_switch_pattern = [1, 0, 1, 1]  # binary switches
 
