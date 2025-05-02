@@ -204,26 +204,42 @@ class Button(PhaseThread):
         self._rgb[2].value = (color != "B")
 
     def run(self):
+        import time
+        from time import sleep
+    
+        # start the thread
         self._running = True
+        print(f"[Button] starting thread. target={self._target!r}")
+    
+        # wait for press → release
         while self._running:
-            now = time.time()
-            # only switch once every self._cycle_period seconds
-            if now - self._last_cycle >= self._cycle_period:
-                self._last_cycle = now
-                self._color_index = (self._color_index + 1) % len(Button.colors)
-                self._set_color(Button.colors[self._color_index])
-
-            # check for a press → release defuse/strike sequence
             v = self._component.value
+    
+            # detect press
             if v and not self._pressed:
                 self._pressed = True
+                print("[Button] press detected")
+    
+            # detect release after a press
             if not v and self._pressed:
+                # log the timer’s seconds string
+                print(f"[Button] release detected at timer.sec = {self._timer._sec!r}")
                 if (self._target is None) or (str(self._target) in self._timer._sec):
+                    print("[Button] OK to defuse")
                     self.defuse()
                 else:
+                    print(f"[Button] FAIL to defuse (target {self._target!r} not in {self._timer._sec!r})")
                     self.fail()
                 return
-
+    
+            # cycle LED color every 10 s (if you still have that logic)
+            now = time.time()
+            if hasattr(self, "_last_cycle"):
+                if now - self._last_cycle >= getattr(self, "_cycle_period", 10.0):
+                    self._last_cycle = now
+                    self._color_index = (self._color_index + 1) % len(self._colors)
+                    self._set_color(self._colors[self._color_index])
+    
             sleep(0.05)
 
     def __str__(self):
