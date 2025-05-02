@@ -1,0 +1,39 @@
+Exception in thread Wires:
+Traceback (most recent call last):
+Exception in thread   File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+    self.run()Toggles
+  File "/home/spartans/CSC-102/bomb_phases.py", line 256, in run
+:
+    Traceback (most recent call last):
+if wire.is_cut() and idx not in cut_sequence:  File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+
+     self.run()
+   File "/home/spartans/CSC-102/bomb_phases.py", line 323, in run
+      bits = [str(int(pin.read())) for pin in self._component]
+       ^  ^ ^ ^   ^^^^^^^^^^^^^^^^^^
+^^^^^AttributeError^: ^'DigitalInOut' object has no attribute 'is_cut'^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spartans/CSC-102/bomb_phases.py", line 323, in <listcomp>
+    bits = [str(int(pin.read())) for pin in self._component]
+                    ^^^^^^^^
+AttributeError: 'DigitalInOut' object has no attribute 'read'
+Exception in thread WiresException in thread :
+Traceback (most recent call last):
+Toggles  File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+:
+    self.run()
+  File "/home/spartans/CSC-102/bomb_phases.py", line 256, in run
+Traceback (most recent call last):
+  File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+    if wire.is_cut() and idx not in cut_sequence:
+         self.run() 
+   File "/home/spartans/CSC-102/bomb_phases.py", line 323, in run
+^^^    ^^bits = [str(int(pin.read())) for pin in self._component]^
+^ ^ ^ ^ ^ 
+ AttributeError    :  ^^^^^^'DigitalInOut' object has no attribute 'is_cut'^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spartans/CSC-102/bomb_phases.py", line 323, in <listcomp>
+    bits = [str(int(pin.read())) for pin in self._component]
+                    ^^^^^^^^
+AttributeError: 'DigitalInOut' object has no attribute 'read'
+
