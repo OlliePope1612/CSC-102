@@ -186,25 +186,29 @@ class Wires(PhaseThread):
         )
 
 # Button Logic
+# -----------------------------------------------------------------------------
+# Button phase — minimal, single‐color, press-and-release defuse logic
+# -----------------------------------------------------------------------------
 class Button(PhaseThread):
-    colors = ["R", "G", "B"]
-
-    def __init__(self, state_pin, rgb_pins, target, initial_color, timer, name="Button"):
+    def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
+        """
+        state_pin:   the DigitalInOut for the pushbutton state
+        rgb_pins:    [R_pin, G_pin, B_pin] DigitalInOut outputs
+        target:      None (for red) or a digit-char for G/B
+        color:       one of "R","G","B"
+        timer:       your Timer instance (to read ._sec for G/B)
+        """
         super().__init__(name, state_pin, target)
-        self._rgb          = rgb_pins
-        self._timer        = timer
-        self._pressed      = False
+        self._rgb    = rgb_pins
+        self._timer  = timer
+        self._color  = color
+        self._pressed = False
 
-        # start cycle at the initial color
-        self._color_index  = Button.colors.index(initial_color)
-        self._last_cycle   = time.time()
-        self._cycle_period = 10.0  # seconds between color changes
-
-        # light the starting color
-        self._set_color(initial_color)
+        # immediately light exactly that one LED
+        self._set_color(color)
 
     def _set_color(self, color):
-        # False → LED on; True → LED off
+        # False => LED on; True => LED off
         self._rgb[0].value = (color != "R")
         self._rgb[1].value = (color != "G")
         self._rgb[2].value = (color != "B")
@@ -212,25 +216,23 @@ class Button(PhaseThread):
     def run(self):
         self._running = True
         while self._running:
-            now = time.time()
-            # only switch once every self._cycle_period seconds
-            if now - self._last_cycle >= self._cycle_period:
-                self._last_cycle = now
-                self._color_index = (self._color_index + 1) % len(Button.colors)
-                self._set_color(Button.colors[self._color_index])
-
-            # check for a press → release defuse/strike sequence
-            v = self._component.value
-            if v and not self._pressed:
+            state = self._component.value   # True when pressed
+            if state and not self._pressed:
+                # you just pressed it down
                 self._pressed = True
-            if not v and self._pressed:
-                if (self._target is None) or (str(self._target) in self._timer._sec):
+
+            if not state and self._pressed:
+                # you just released it → check target
+                # R (target None) always defuses on release
+                # G/B defuse only if the digit appears in the Timer’s seconds
+                if (self._target is None
+                    or str(self._target) in self._timer._sec):
                     self.defuse()
                 else:
                     self.fail()
                 return
 
-            sleep(0.05)
+            sleep(0.1)
 
     def __str__(self):
         return "DEFUSED" if self._defused else ("Pressed" if self._component.value else "Released")
