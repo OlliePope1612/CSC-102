@@ -149,7 +149,7 @@ class Keypad(PhaseThread):
                 while self._component.pressed_keys:
                     sleep(0.05)
                 # Reset input on '*'
-                if key == "*":
+                if (key == "*" and STAR_CLEARS_PASS):
                     self._value = ""
                 elif len(self._value) < self._max:
                     self._value += key
