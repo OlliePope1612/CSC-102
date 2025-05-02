@@ -348,27 +348,43 @@ class Toggles(PhaseThread):
         )
 
 class Keypad(PhaseThread):
-    def __init__(self, component, target, name="Keypad"):
+    def __init__(self, component, target, name="Keypad", max_len=6, reset_on_fail=False, feedback_fn=None):
         super().__init__(name, component, target)
         self._value = ""
+        self._max_len = max_len                # prevent overflow
+        self._reset_on_fail = reset_on_fail    # allow reset instead of immediate fail
+        self._feedback_fn = feedback_fn        # optional callback for UI/audio/etc
 
     def run(self):
         self._running = True
         while self._running:
             if self._component.pressed_keys:
-                # debounce: grab the first key only once
-                key = self._component.pressed_keys[0]
-                # wait until it’s released
+                key = str(self._component.pressed_keys[0])
+
+                # Optional feedback callback
+                if self._feedback_fn:
+                    self._feedback_fn(key)
+
+                # Debounce
                 while self._component.pressed_keys:
                     sleep(0.05)
-                # append and check
-                self._value += str(key)
+
+                # Handle backspace
+                if key == "#" and self._value:
+                    self._value = self._value[:-1]
+                elif len(self._value) < self._max_len:
+                    self._value += key
+
+                # Check for defuse or fail
                 if self._value == self._target:
                     self.defuse()
                     return
-                if not self._target.startswith(self._value):
-                    self.fail()
-                    return
+                elif not self._target.startswith(self._value):
+                    if self._reset_on_fail:
+                        self._value = ""
+                    else:
+                        self.fail()
+                        return
             sleep(0.1)
 
     def __str__(self):
