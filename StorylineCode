@@ -1,98 +1,66 @@
-import random
 import time
+import random
 
-# Character chaos lines
-quagmire_lines = ["Giggity! This bomb's got curves.", "I'd unplug that... wire.", "Giggity giggity goo!"]
+# --- Characters' Commentary (Family Guy Theme) ---
+quagmire_lines = ["Giggity! This keypad's hotter than Lois!", "I'd tap that... code.", "Giggity giggity goo!"]
 joe_lines = ["MY WHEELCHAIR'S DEAD!", "HELP! PUSH ME CLOSER!", "PETER, YOU'RE OUR ONLY HOPE!"]
 cleveland_lines = ["No no no no NO!", "Oh, that's not good...", "I'm getting outta here!"]
 
-# Side effects of wrong moves
-side_effects = [
-    "A swarm of bees attacks Peter!",
-    "Fireworks explode inside the bar!",
-    "'Who Let the Dogs Out' blasts at full volume!",
-    "The floor turns into quicksand!",
-    "A chicken falls from the ceiling!"
-]
+# --- Setup ---
+correct_code = "42069"
+correct_wire = "orange"
+correct_switch_pattern = [1, 0, 1, 1]  # binary switches
 
-# Updated wire color list
-wires = ["orange", "yellow", "blue", "green", "purple"]
+wire_colors = ["orange", "yellow", "blue", "green", "purple"]
+random.shuffle(wire_colors)
 
-def sfx(text):
-    print(f"*SFX: {text.upper()}*")
+# --- Begin Game ---
+print("=== FAMILY GUY: PETER GRIFFIN VS. THE BOMB ===\n")
+time.sleep(1)
+print("The Drunken Clam is rigged to explode. Help Peter Griffin defuse the bomb!\n")
 
-def run_game():
-    print("\n--- FAMILY GUY: PETER GRIFFIN BOMB SQUAD ---\n")
-    print("Peter Griffin has been hired to UNPLUG bombs around Quahog!")
-    input("Press ENTER to continue...")
+# --- Phase 1: Keypad ---
+print("📟 KEYPAD PHASE")
+print("Enter the 5-digit code Quagmire whispered while winking.")
+attempt = input("Enter code: ")
 
-    print("\nPeter arrives at the Drunken Clam. There's a bomb with flashing lights!")
-    print("The timer shows 5:00 minutes!")
-    print("Quagmire, Joe, and Cleveland are panicking around him.\n")
+if attempt != correct_code:
+    print(random.choice(quagmire_lines))
+    print("WRONG! The bomb makes a beeping noise...")
+    exit("💥 The bomb explodes! Game over.")
+print("✅ Correct code! Moving on...\n")
+time.sleep(1)
 
-    start_time = time.time()
-    end_time = start_time + 300
-    strikes = 0
-    score = 0
+# --- Phase 2: Wire Unplug ---
+print("🔌 WIRE PHASE")
+print("Five wires are plugged in: ", ", ".join(wire_colors))
+print("Unplug ONE. Peter is colorblind, so choose wisely.")
+chosen = input("Which wire do you unplug? ").lower()
 
-    correct_wire = random.choice(wires)
+if chosen != correct_wire:
+    print(random.choice(cleveland_lines))
+    exit("💥 Wrong wire! Kaboom!")
+print("✅ Correct wire unplugged! You're a genius!\n")
+time.sleep(1)
 
-    print("INSTRUCTIONS:")
-    print("- UNPLUG the ORANGE wire. Unless it's jealous of PURPLE. Then UNPLUG the YELLOW wire.")
-    print("- If the timer has a 7 in it, stop and do a chicken dance.\n")
+# --- Phase 3: Switches (Binary) ---
+print("🧨 SWITCH PHASE")
+print("There are 4 switches. ON = 1, OFF = 0.")
+print("Joe yells: 'SET THEM TO BINARY 1011, OR WE'RE TOAST!'")
 
-    while time.time() < end_time and strikes < 3:
-        print(random.choice(quagmire_lines))
-        print(random.choice(joe_lines))
-        print(random.choice(cleveland_lines))
+switches = []
+for i in range(4):
+    val = input(f"Switch {i+1} (0=OFF, 1=ON): ")
+    if val not in ["0", "1"]:
+        exit("💥 Invalid input! The bomb blows up in Peter’s face.")
+    switches.append(int(val))
 
-        print("\nWires available to unplug:", ", ".join(wires))
-        choice = input("Which wire will Peter unplug? ").strip().lower()
+if switches != correct_switch_pattern:
+    print(random.choice(joe_lines))
+    exit("💥 Incorrect switch pattern! The bar goes up in flames.")
+print("✅ Switches are good! Bomb defused!!! 🍻")
+time.sleep(1)
 
-        if random.randint(1, 5) == 1:
-            print("THE TIMER HAS A 7! Peter stops to do a chicken dance. (He wastes 10 seconds.)")
-            sfx("awkward chicken dance music")
-            time.sleep(2)
-            end_time -= 10
-            score -= 5
-
-        if choice == correct_wire:
-            print("\nPeter panics... but somehow UNPLUGS THE RIGHT WIRE!")
-            sfx("power down")
-            print("The bomb powers down. The Drunken Clam is saved!")
-            score += 100 + int(end_time - time.time())
-            break
-        elif choice not in wires:
-            print("Peter stares at the wire confused. That's not even a real color!")
-            score -= 10
-            continue
-        else:
-            print("\nPeter unplugged the WRONG wire!")
-            print(random.choice(side_effects))
-            sfx("beep beep beep")
-            strikes += 1
-            score -= 20
-            end_time -= 15
-            print(f"⚠️  STRIKES: {strikes}/3\n")
-
-    else:
-        print("\n💥 The bomb explodes in cartoon fashion, launching Peter through a wall!")
-        print("Everyone is fine. Somehow.")
-        sfx("EXPLOSION")
-        score = max(score, 0)
-
-    print("\nAt the last second, Stewie and Brian arrive.")
-    print("Stewie: 'Honestly, if humanity's fate rested in his hands, we deserved extinction anyway.'")
-
-    print(f"\n🏆 FINAL SCORE: {score}")
-    if strikes >= 3:
-        print("❌ You hit 3 strikes. Peter should never be trusted with electronics.")
-
-    print("Peter trips over another bomb. THE CYCLE BEGINS AGAIN.")
-    print("\n--- THE END ---\n")
-
-    again = input("Play again? (yes/no): ").strip().lower()
-    if again.startswith("y"):
-        run_game()
-
-run_game()
+# --- Victory ---
+print("\n🎉 YOU SAVED THE DRUNKEN CLAM! 🎉")
+print("Peter: 'Heh heh... not bad for a fat guy in green pants.'")
