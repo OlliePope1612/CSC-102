@@ -100,7 +100,7 @@ class PhaseThread(Thread):
     def defuse(self): self._defused, self._running = True, False
     def fail( self): self._failed,  self._running = True, True
 
-# Timer phase (precise 1Hz)
+# Timer Logic
 class Timer(PhaseThread):
     def __init__(self, component, initial_value, name="Timer"):
         super().__init__(name, component)
@@ -127,7 +127,7 @@ class Timer(PhaseThread):
     def __str__(self):
         return "DEFUSED" if self._defused else f"{self._min}:{self._sec}"
 
-# Keypad phase (* to clear, # to submit)
+# Keypad Logic (* to clear, # to submit)
 class Keypad(PhaseThread):
     def __init__(self, comp, target, name="Keypad"):  # max length = target length
         super().__init__(name, comp, target)
@@ -155,7 +155,7 @@ class Keypad(PhaseThread):
     def __str__(self):
         return "DEFUSED" if self._defused else self._value
 
-# Wires phase
+# Wires Logic
 class Wires(PhaseThread):
     def __init__(self, comp, target, name="Wires"):
         super().__init__(name, comp, target)
@@ -179,20 +179,21 @@ class Wires(PhaseThread):
             for w in self._component)
         return "DEFUSED" if self._defused else bits
 
-# Button phase
+# Button Logic
 class Button(PhaseThread):
     colors = ["R", "G", "B"]
 
     def __init__(self, state_pin, rgb_pins, target, initial_color, timer, name="Button"):
-        # state_pin is your input pin, rgb_pins is a list of 3 output pins
         super().__init__(name, state_pin, target)
-        self._rgb       = rgb_pins
-        self._timer     = timer
-        self._pressed   = False
+        self._rgb          = rgb_pins
+        self._timer        = timer
+        self._pressed      = False
 
-        # set up the color cycle
-        self._color_index = Button.colors.index(initial_color)
-        self._last_cycle  = time.time()
+        # start cycle at the initial color
+        self._color_index  = Button.colors.index(initial_color)
+        self._last_cycle   = time.time()
+        self._cycle_period = 10.0  # seconds between color changes
+
         # light the starting color
         self._set_color(initial_color)
 
@@ -205,20 +206,19 @@ class Button(PhaseThread):
     def run(self):
         self._running = True
         while self._running:
-            # cycle the LED once per second
             now = time.time()
-            if now - self._last_cycle >= 1.0:
+            # only switch once every self._cycle_period seconds
+            if now - self._last_cycle >= self._cycle_period:
                 self._last_cycle = now
                 self._color_index = (self._color_index + 1) % len(Button.colors)
                 self._set_color(Button.colors[self._color_index])
 
-            # read the pushbutton state
+            # check for a press → release defuse/strike sequence
             v = self._component.value
             if v and not self._pressed:
                 self._pressed = True
             if not v and self._pressed:
-                # on release: check defuse condition
-                if self._target is None or str(self._target) in self._timer._sec:
+                if (self._target is None) or (str(self._target) in self._timer._sec):
                     self.defuse()
                 else:
                     self.fail()
@@ -228,7 +228,8 @@ class Button(PhaseThread):
 
     def __str__(self):
         return "DEFUSED" if self._defused else ("Pressed" if self._component.value else "Released")
-# Toggles phase
+        
+# Toggles Logic
 class Toggles(PhaseThread):
     def __init__(self, comp, target, name="Toggles"):
         super().__init__(name, comp, target)
