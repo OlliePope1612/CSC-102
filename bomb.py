@@ -76,44 +76,43 @@ def setup_phases():
     for phase in (timer, keypad, wires, button, toggles):
         phase.start()
 
-def setup_phases():
-    global timer, keypad, wires, button, toggles, strikes_left, active_phases
+def check_phases():
+    global strikes_left, active_phases
 
-    # reset counters
-    strikes_left  = NUM_STRIKES
-    active_phases = NUM_PHASES
+    # 1) Refresh the labels once
+    try: gui._ltimer[  "text"] = f"Time left: {timer}"
+    except: pass
+    try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
+    except: pass
+    try: gui._lwires[  "text"] = f"Wires phase: {wires}"
+    except: pass
+    try: gui._lbutton["text"] = f"Button phase: {button}"
+    except: pass
+    try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
+    except: pass
+    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except: pass
 
-    # Timer
-    timer = Timer(component_7seg, COUNTDOWN)
+    # 2) Handle any newly‐failed (strike) or newly‐defused phases
+    for phase in (keypad, wires, button, toggles):
+        if phase._failed:
+            strikes_left  -= 1
+            active_phases -= 1
+            phase._failed = False
+        if phase._defused:
+            active_phases -= 1
+            phase._defused = False
 
-    # Keypad
-    keypad = Keypad(component_keypad, str(keypad_target))
-
-    # Wires (pad to however many wire-pins you actually have)
-    wires_pattern = bin(wires_target)[2:].zfill(len(component_wires))
-    wires = Wires(component_wires, wires_pattern)
-
-    # Button
-    button = Button(
-        component_button_state,
-        component_button_RGB,
-        button_target,
-        button_color,
-        timer
-    )
-
-    # Toggles (pad to however many toggle-pins you actually have)
-    toggles_pattern = bin(toggles_target)[2:].zfill(len(component_toggles))
-    toggles = Toggles(component_toggles, toggles_pattern)
-
-    # Hook up GUI controls
-    gui.setTimer(timer)
-    gui.setButton(button)
-
-    # Launch all phases
-    for phase in (timer, keypad, wires, button, toggles):
-        phase.start()
-
+    # 3) Decide whether to continue or finish
+    if strikes_left <= 0:
+        # You ran out of strikes ⇒ BOOM
+        gui.conclusion(success=False)
+    elif active_phases <= 0:
+        # All phases defused ⇒ SUCCESS
+        gui.conclusion(success=True)
+    else:
+        # Otherwise keep polling
+        gui.after(100, check_phases)
 def start_game():
     gui.setup()
     setup_phases()
