@@ -1,0 +1,168 @@
+### purpose: ease of debugging files
+
+from tkinter import Tk
+from bomb_configs import *        # brings in component_7seg, component_keypad, etc.
+from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd
+
+from threading import Thread
+from time import sleep
+import logging
+
+# Enable debug mode
+DEBUG_MODE = True
+if DEBUG_MODE:
+    logging.basicConfig(level=logging.INFO)
+
+def debug_log(message):
+    if DEBUG_MODE:
+        logging.info(message)
+
+# Dialogue for family guy
+dialogues = {
+    'intro':   "Stewie: At long last, Quahog will be no more! Brian: Oh dear, we must act fast!",
+    'Keypad':  "Brian: Nice job cracking the code! Now sever the correct circuits.",
+    'Wires':   "Brian: Wires cut! Next flip the family crests.",
+    'Toggles': "Brian: Toggles set! Now press the button at the right time.",
+    'Button':  "Brian: Button done! Final override to finish this.",
+    'Defused': "Brian: You saved Quahog! Hooray."
+}
+
+# Global state
+strikes_left = 0
+active_phases = 0
+timer = keypad = wires = button = toggles = None
+
+def setup_phases():
+    global timer, keypad, wires, button, toggles, strikes_left, active_phases
+
+    try:
+        strikes_left  = NUM_STRIKES
+        active_phases = NUM_PHASES
+
+        timer   = Timer(component_7seg, COUNTDOWN)
+        keypad  = Keypad(component_keypad, str(keypad_target))
+        wires   = Wires(component_wires, bin(wires_target)[2:].zfill(5))
+        button  = Button(component_button_state, component_button_RGB,
+                         button_target, button_color, timer)
+        toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(3))
+
+        gui.setTimer(timer)
+        gui.setButton(button)
+
+        for phase in (timer, keypad, wires, button, toggles):
+            try:
+                phase.start()
+            except Exception as e:
+                debug_log(f"Error starting phase {phase}: {e}")
+
+        # Demo cut wires (only for non-RPi)
+        if not RPi:
+            def demo_cut_wires():
+                try:
+                    bits = bin(wires_target)[2:].zfill(5)
+                    for idx, bit in enumerate(bits):
+                        if bit == "1":
+                            component_wires[idx].cut()
+                            sleep(0.1)
+                except Exception as e:
+                    debug_log(f"Error in demo_cut_wires: {e}")
+            Thread(target=demo_cut_wires, daemon=True).start()
+
+    except Exception as e:
+        debug_log(f"Error in setup_phases: {e}")
+
+def update_labels():
+    try: gui._ltimer["text"]   = f"Time left: {timer}"
+    except: debug_log("Timer label update failed")
+
+    try: gui._lkeypad["text"]  = f"Keypad phase: {keypad}"
+    except: debug_log("Keypad label update failed")
+
+    try: gui._lwires["text"]   = f"Wires phase: {wires}"
+    except: debug_log("Wires label update failed")
+
+    try: gui._lbutton["text"]  = f"Button phase: {button}"
+    except: debug_log("Button label update failed")
+
+    try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
+    except: debug_log("Toggles label update failed")
+
+    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except: debug_log("Strikes label update failed")
+
+def check_phases():
+    global strikes_left, active_phases
+
+    try:
+        while active_phases > 0 and strikes_left > 0:
+            update_labels()
+
+            for phase in (keypad, wires, button, toggles):
+                try:
+                    if phase._failed:
+                        strikes_left  -= 1
+                        active_phases -= 1
+                        debug_log(f"{phase.__class__.__name__} failed! Strikes left: {strikes_left}")
+                        phase._failed = False
+
+                    if phase._defused:
+                        active_phases -= 1
+                        debug_log(f"{phase.__class__.__name__} defused!")
+                        phase._defused = False
+                except Exception as e:
+                    debug_log(f"Error checking phase {phase}: {e}")
+
+            try:
+                gui.update()
+            except Exception as e:
+                debug_log(f"Error updating GUI: {e}")
+
+            gui.after(100)
+    except Exception as e:
+        debug_log(f"Fatal error in check_phases loop: {e}")
+
+    try:
+        gui.conclusion(success=(strikes_left > 0))
+    except Exception as e:
+        debug_log(f"Error in conclusion screen: {e}")
+
+def start_game():
+    try:
+        gui.setup()
+        setup_phases()
+        window.after(100, check_phases)
+    except Exception as e:
+        debug_log(f"Error starting game: {e}")
+
+def bootup(n=0):
+    try:
+        if not ANIMATE or n == len(boot_text):
+            if not ANIMATE:
+                gui._lscroll["text"] = boot_text.replace("\x00", "")
+            gui.setup()
+            if RPi:
+                setup_phases()
+                window.after(100, check_phases)
+        else:
+            if boot_text[n] != "\x00":
+                gui._lscroll["text"] += boot_text[n]
+            delay = 25 if boot_text[n] != "\x00" else 750
+            gui.after(delay, bootup, n + 1)
+    except Exception as e:
+        debug_log(f"Error in bootup animation: {e}")
+
+###########
+# MAIN
+###########
+
+try:
+    window = Tk()
+    gui = Lcd(window)
+
+    gui.after(1000, bootup)
+    boot_duration = 1000 + len(boot_text) * 50
+    gui.after(boot_duration, start_game)
+
+    window.mainloop()
+except Exception as e:
+    debug_log(f"Fatal GUI error: {e}")
