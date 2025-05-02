@@ -99,42 +99,70 @@ class PhaseThread(Thread):
 # Timer phase
 default=None
 class Timer(PhaseThread):
-    def __init__(self, component, initial, name="Timer"):
-        super().__init__(name, component);
-        self._value=initial; self._paused=False; self._min=self._sec=""
+    def __init__(self, component, initial_value, name="Timer"):
+        super().__init__(name, component)
+        self._value   = initial_value
+        self._paused  = False
+        self._min = self._sec = ""
+        self._interval = 1
+
     def run(self):
-        self._running=True
+        import time
+        self._running = True
+        next_tick = time.time() + self._interval
         while self._running:
-            if not self._paused:
-                self._min = f"{self._value//60:02d}"; self._sec=f"{self._value%60:02d}"
+            if not self._paused and time.time() >= next_tick:
+                # decrement and update
+                self._value -= 1
+                self._min = f"{max(self._value,0)//60:02d}"
+                self._sec = f"{max(self._value,0)%60:02d}"
+                # update hardware display
                 self._component.print(f"{self._min}:{self._sec}")
-                sleep(1)
-                if self._value<=0: self._running=False
-                self._value-=1
-            else: sleep(0.1)
+                next_tick += self._interval
+                if self._value < 0:
+                    self._running = False
+            else:
+                sleep(0.05)
+
     def pause(self):
+        self._paused = not self._paused
+        self._component.blink_rate = (2 if self._paused else 0)
+
+(self):
         self._paused = not self._paused
         self._component.blink_rate = (2 if self._paused else 0)
     def __str__(self): return "DEFUSED" if self._defused else f"{self._min}:{self._sec}"
 
 # Keypad phase – free entry until full length
 class Keypad(PhaseThread):
-    def __init__(self, comp, target, name="Keypad", max_len=None):
-        super().__init__(name, comp, target)
-        self._value=""
-        self._max = max_len or len(target)
+    def __init__(self, component, target, name="Keypad", max_len=None):
+        super().__init__(name, component, target)
+        self._value = ""
+        self._max   = max_len or len(target)
+
     def run(self):
-        self._running=True
+        self._running = True
         while self._running:
             if self._component.pressed_keys:
-                key = str(self._component.pressed_keys[0]); sleep(0.05)
-                if key=="#": self._value=self._value[:-1]
-                elif len(self._value)<self._max: self._value+=key
-                if len(self._value)==len(self._target):
-                    if self._value==self._target: self.defuse()
-                    else: self.fail()
+                key = str(self._component.pressed_keys[0])
+                # Debounce
+                while self._component.pressed_keys:
+                    sleep(0.05)
+                # Reset input on '*'
+                if key == "*":
+                    self._value = ""
+                elif len(self._value) < self._max:
+                    self._value += key
+                # Check for completion
+                if len(self._value) == len(self._target):
+                    if self._value == self._target:
+                        self.defuse()
+                    else:
+                        self.fail()
                     return
             sleep(0.1)
+    def __str__(self):
+        return "DEFUSED" if self._defused else self._value
     def __str__(self): return "DEFUSED" if self._defused else self._value
 
 # Wires phase
