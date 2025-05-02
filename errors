@@ -1,14 +1,8 @@
-
->>> %Run bomb.py
-Exception in Tkinter callback
+Exception in thread Button:
 Traceback (most recent call last):
-  File "/usr/lib/python3.11/tkinter/__init__.py", line 1948, in __call__
-    return self.func(*args)
-           ^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.11/tkinter/__init__.py", line 861, in callit
-    func(*args)
-  File "/home/spartans/CSC-102/bomb.py", line 74, in check_phases
-    gui.conclusion(success=(strikes_left > 0))
-  File "/home/spartans/CSC-102/bomb_phases.py", line 79, in conclusion
-    Button(self, text="Retry", font=("Courier New",18), bg="gray20", fg="white",
-TypeError: Button.__init__() got an unexpected keyword argument 'text'
+  File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+    self.run()
+  File "/home/spartans/CSC-102/bomb_phases.py", line 240, in run
+    self._color_index = (self._color_index + 1) % len(self._colors)
+                                                      ^^^^^^^^^^^^
+AttributeError: 'Button' object has no attribute '_colors'. Did you mean: 'colors'?
