@@ -45,14 +45,14 @@ def check_phases():
     global strikes_left, active_phases
 
     while active_phases > 0 and strikes_left > 0:
-        # update labels; wrap each in try/except so we don’t crash after conclusion()
-        try: gui._ltimer[  "text"] = f"Time left: {timer}"
+        # update labels
+        try: gui._ltimer["text"]   = f"Time left: {timer}"
         except: pass
-        try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
+        try: gui._lkeypad["text"]  = f"Keypad phase: {keypad}"
         except: pass
-        try: gui._lwires[  "text"] = f"Wires phase: {wires}"
+        try: gui._lwires["text"]   = f"Wires phase: {wires}"
         except: pass
-        try: gui._lbutton["text"] = f"Button phase: {button}"
+        try: gui._lbutton["text"]  = f"Button phase: {button}"
         except: pass
         try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
         except: pass
@@ -60,18 +60,19 @@ def check_phases():
         except: pass
 
         for phase in (keypad, wires, button, toggles):
-            if phase._failed:
-                strikes_left  -= 1
-                active_phases -= 1
-                phase._failed = False
             if phase._defused:
                 active_phases -= 1
                 phase._defused = False
+            elif phase._failed:
+                strikes_left  -= 1
+                active_phases -= 1
+                phase._failed = False
 
         gui.update()
         gui.after(100)
 
-    gui.conclusion(success=(strikes_left > 0))
+    # success only if we completed all phases
+    gui.conclusion(success=(active_phases == 0))
 
 
 def start_game():
