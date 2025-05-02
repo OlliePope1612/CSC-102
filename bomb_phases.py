@@ -178,46 +178,56 @@ class Wires(PhaseThread):
         return "DEFUSED" if self._defused else bits
 
 # Button phase
+# Button phase
 class Button(PhaseThread):
-    colors = [ "R", "G", "B" ]  # the button's possible colors
-    def __init__(self, state, rgb, target, color, timer, name="Button"):
-        super().__init__(name, state, target)
-        self._rgb   = rgb; self._color = color; self._timer = timer; self._pressed=False
-        
-    
+    colors = ["R", "G", "B"]  # cycle order
+
+    def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
+        super().__init__(name, state_pin, target)
+        self._rgb       = rgb_pins
+        self._timer     = timer
+        self._pressed   = False
+
+        # figure out where we start in the cycle
+        self._color_index = Button.colors.index(color)
+        # feed that into the hardware
+        self._set_color(Button.colors[self._color_index])
+        # countdown until next color change
+        self._counter = 0
+
+    def _set_color(self, c):
+        # use exactly the c argument, not any stale attribute
+        self._rgb[0].value = (c == "R")
+        self._rgb[1].value = (c == "G")
+        self._rgb[2].value = (c == "B")
+
     def run(self):
-        
         self._running = True
-        rgb_index = 0
-        rgb_counter = 0
-        while (True):
-            # set the LED to the current color
-            self._rgb[0].value = False if Button.colors[rgb_index] == "R" else True
-            self._rgb[1].value = False if Button.colors[rgb_index] == "G" else True
-            self._rgb[2].value = False if Button.colors[rgb_index] == "B" else True
-            # get the pushbutton's state
-            self._value = self._state.value
-            # increment the RGB counter
-            rgb_counter += 1
-            # switch to the next RGB color every 1s (10 * 0.1s = 1s)
-            if (rgb_counter == 10):
-                rgb_index = (rgb_index + 1) % len(Button.colors)
-                rgb_counter = 0
-            sleep(0.1)
-            self._running = False
-                
+        while self._running:
+            # 1) cycle the LED every 1 second (10 × 0.1s ticks)
+            self._counter += 1
+            if self._counter >= 10:
+                self._counter = 0
+                self._color_index = (self._color_index + 1) % len(Button.colors)
+                new_color = Button.colors[self._color_index]
+                self._set_color(new_color)
+
+            # 2) read the real button on self._component
             v = self._component.value
-            if v and not self._pressed: self._pressed=True
+            if v and not self._pressed:
+                self._pressed = True
             if not v and self._pressed:
-                if self._target is None or str(self._target) in self._timer._sec:
-                    self.defuse() 
+                # on release, check defuse condition
+                if (self._target is None) or (str(self._target) in self._timer._sec):
+                    self.defuse()
                 else:
                     self.fail()
                 return
+
             sleep(0.1)
+
     def __str__(self):
         return "DEFUSED" if self._defused else ("Pressed" if self._component.value else "Released")
-
 # Toggles phase
 class Toggles(PhaseThread):
     def __init__(self, comp, target, name="Toggles"):
