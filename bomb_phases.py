@@ -76,10 +76,12 @@ class Lcd(Frame):
             pass
         # retry/quit buttons
         y = 0.8
-        Button(self, text="Retry", font=("Courier New",18), bg="gray20", fg="white",
-               command=self.retry).place(relx=0.3, rely=y, anchor="center")
-        Button(self, text="Quit",  font=("Courier New",18), bg="gray20", fg="white",
-               command=self.quit).place( relx=0.7, rely=y, anchor="center")
+        tkinter.Button(self, text="Retry", font=("Courier New",18),
+                        bg="gray20", fg="white", command=self.retry
+                       ).place(relx=0.3, rely=y, anchor="center")
+        tkinter.Button(self, text="Quit",  font=("Courier New",18),
+                        bg="gray20", fg="white", command=self.quit
+                       ).place(relx=0.7, rely=y, anchor="center")
 
     def retry(self): os.execv(sys.executable, [sys.executable]+[sys.argv[0]])
     def quit(self):
