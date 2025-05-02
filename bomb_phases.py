@@ -156,28 +156,34 @@ class Keypad(PhaseThread):
         return "DEFUSED" if self._defused else self._value
 
 # Wires Logic
+# in bomb_phases.py, replace your existing Wires class with:
+
 class Wires(PhaseThread):
-    def __init__(self, comp, target, name="Wires"):
-        super().__init__(name, comp, target)
-        self._tstr = target
+    def __init__(self, component, target, name="Wires"):
+        super().__init__(name, component, target)
+        # store the exact bitstring you want to see, e.g. "01101"
+        self._target_bits = target
+
     def run(self):
-        tgt = [int(c) for c in self._tstr]
-        seq = []
         self._running = True
         while self._running:
-            for i, w in enumerate(self._component):
-                cut = w.is_cut() if hasattr(w, 'is_cut') else w.value
-                if cut and i not in seq:
-                    seq.append(i)
-                    if len(seq) == len(tgt):
-                        self.defuse() if seq==tgt else self.fail()
-                        return
+            # build a current 0/1 string from your wires
+            bits = "".join(
+                "1" if (w.is_cut() if hasattr(w, "is_cut") else w.value)
+                else "0"
+                for w in self._component
+            )
+            # once the live pattern exactly matches, defuse
+            if bits == self._target_bits:
+                self.defuse()
+                return
             sleep(0.1)
+
     def __str__(self):
-        bits = ''.join(
-            '1' if (w.is_cut() if hasattr(w, 'is_cut') else w.value) else '0'
-            for w in self._component)
-        return "DEFUSED" if self._defused else bits
+        return "DEFUSED" if self._defused else "".join(
+            "1" if (w.is_cut() if hasattr(w, "is_cut") else w.value) else "0"
+            for w in self._component
+        )
 
 # Button Logic
 class Button(PhaseThread):
