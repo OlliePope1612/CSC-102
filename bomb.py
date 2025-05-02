@@ -21,6 +21,41 @@ dialogues = {
 # Helper functions
 ###########
 
+def check_phases():
+    global strikes_left, active_phases
+
+    # 1) Refresh every label (no more while-loop!)
+    try: gui._ltimer[  "text"] = f"Time left: {timer}"
+    except: pass
+    try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
+    except: pass
+    try: gui._lwires[  "text"] = f"Wires phase: {wires}"
+    except: pass
+    try: gui._lbutton["text"] = f"Button phase: {button}"
+    except: pass
+    try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
+    except: pass
+    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except: pass
+
+    # 2) Handle any defuses or strikes
+    for phase in (keypad, wires, button, toggles):
+        if phase._failed:
+            strikes_left  -= 1
+            active_phases -= 1
+            phase._failed = False
+        if phase._defused:
+            active_phases -= 1
+            # leave phase._defused True so "DEFUSED" sticks
+
+    # 3) Are we still in the game?
+    if active_phases > 0 and strikes_left > 0:
+        # schedule the next update in 100 ms
+        gui.after(100, check_phases)
+    else:
+        # 4) Game over: win or lose screen
+        gui.conclusion(success=(active_phases > 0))
+        
 def setup_phases():
     global timer, keypad, wires, button, toggles, strikes_left, active_phases
 
