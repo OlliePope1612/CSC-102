@@ -6,15 +6,19 @@ quagmire_lines = ["Giggity! This keypad's hotter than Lois!", "I'd tap that... c
 joe_lines = ["MY WHEELCHAIR'S DEAD!", "HELP! PUSH ME CLOSER!", "PETER, YOU'RE OUR ONLY HOPE!"]
 cleveland_lines = ["No no no no NO!", "Oh, that's not good...", "I'm getting outta here!"]
 
-# --- Setup ---
-correct_code = "Random"
-correct_wire = "orange"
-correct_switch_pattern = [1, 0, 1, 1]  # binary switches
+# === "Programming" the bomb (random values set at the start) ===
+correct_code = str(random.randint(10000, 99999))  # random 5-digit code
+correct_wire = random.choice(["orange", "yellow", "blue", "green", "purple"])
+correct_switch_pattern = [random.choice([0, 1]) for _ in range(4)]
 
-wire_colors = ["orange", "yellow", "blue", "green", "purple"]
-random.shuffle(wire_colors)
+# For debugging/setup: show hidden solution
+print("\n[DEBUG MODE] Bomb Configuration:")
+print(f"Keypad code: {correct_code}")
+print(f"Correct wire: {correct_wire}")
+print(f"Switch pattern: {''.join(map(str, correct_switch_pattern))}\n")
+# Comment these lines out when deploying the game
 
-# --- Begin Game ---
+# === Begin Game ===
 print("=== FAMILY GUY: PETER GRIFFIN VS. THE BOMB ===\n")
 time.sleep(1)
 print("The Drunken Clam is rigged to explode. Help Peter Griffin defuse the bomb!\n")
@@ -33,7 +37,9 @@ time.sleep(1)
 
 # --- Phase 2: Wire Unplug ---
 print("🔌 WIRE PHASE")
-print("Five wires are plugged in: ", ", ".join(wire_colors))
+wires = ["orange", "yellow", "blue", "green", "purple"]
+random.shuffle(wires)
+print("Five wires are plugged in: ", ", ".join(wires))
 print("Unplug ONE. Peter is colorblind, so choose wisely.")
 chosen = input("Which wire do you unplug? ").lower()
 
@@ -46,7 +52,7 @@ time.sleep(1)
 # --- Phase 3: Switches (Binary) ---
 print("🧨 SWITCH PHASE")
 print("There are 4 switches. ON = 1, OFF = 0.")
-print("Joe yells: 'SET THEM TO BINARY 1011, OR WE'RE TOAST!'")
+print("Joe yells: 'SET THE CORRECT BINARY PATTERN OR WE'RE DONE FOR!'")
 
 switches = []
 for i in range(4):
