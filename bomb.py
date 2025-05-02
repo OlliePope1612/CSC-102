@@ -7,10 +7,6 @@ from tkinter import Tk
 from bomb_configs import *        # brings in component_7seg, component_keypad, etc., plus COUNTDOWN, targets, RPi
 from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd
 
-### REMOVE!!!!!
-from threading import Thread
-from time import sleep
-
 # Dialogue for family guy
 dialogues = {
     'intro':   "Stewie: At long last, Quahog will be no more! Brian: Oh dear, we must act fast!",
@@ -44,16 +40,6 @@ def setup_phases():
 
     for phase in (timer, keypad, wires, button, toggles):
         phase.start()
-
-        # demo‐mode auto‐cut for the Wires phase (macOS mock)
-    if not RPi:
-        def demo_cut_wires():
-            bits = bin(wires_target)[2:].zfill(5)
-            for idx, bit in enumerate(bits):
-                if bit == "1":
-                    component_wires[idx].cut()
-                    sleep(0.1)
-        Thread(target=demo_cut_wires, daemon=True).start()
 
 def check_phases():
     global strikes_left, active_phases
@@ -95,17 +81,10 @@ def start_game():
 
 # generates the bootup sequence on the LCD
 def bootup(n=0):
-    # if we’re done animating (or not animating at all)
     if (not ANIMATE or n == len(boot_text)):
-        # if not animating, just dump the full text
-        if (not ANIMATE):
-            gui._lscroll["text"] = boot_text.replace("\x00", "")
-        # switch to the live GUI
+        # if (not ANIMATE):
+        #     gui._lscroll["text"] = boot_text.replace("\x00", "")
         gui.setup()
-        # only start the threads on the Pi
-        if RPi:
-            setup_phases()
-            window.after(100, check_phases)
     else:
         # append the next character (skip the pause-marker \x00)
         if (boot_text[n] != "\x00"):
