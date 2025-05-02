@@ -291,6 +291,7 @@ SHOW_BUTTONS = True   # show Pause/Quit buttons in GUI (only matters in mock)
 COUNTDOWN = 300       # initial countdown (seconds)
 NUM_STRIKES = 5       # allowed strikes before explosion
 NUM_PHASES = 5        # total phases: Timer, Keypad, Wires, Button, Toggles
+STAR_CLEAR_PASS = True# allows star key to clear passcode
 
 # Base imports used in both modes
 from random import randint, shuffle, choice
