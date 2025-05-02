@@ -334,7 +334,7 @@ if RPi:
         pin.value = True
 
     # toggle switches (3-pin configuration)
-    component_toggles = [DigitalInOut(i) for i in (board.D12, board.D16, board.D20)]
+    component_toggles = [DigitalInOut(i) for i in (board.D12, board.D16, board.D20, board.D21)]
     for pin in component_toggles:
         pin.direction = Direction.INPUT
         pin.pull    = Pull.DOWN
