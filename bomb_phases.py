@@ -231,17 +231,32 @@ class Button(PhaseThread):
         
 # Toggles Logic
 class Toggles(PhaseThread):
-    def __init__(self, comp, target, name="Toggles"):
-        super().__init__(name, comp, target)
+    def __init__(self, component, target, name="Toggles"):
+        super().__init__(name, component, target)
+
     def run(self):
-        prev=None; self._running=True
+        self._running = True
         while self._running:
-            bits = [str(int(p.read())) for p in self._component] if hasattr(self._component[0], 'read') else [str(int(p.value)) for p in self._component]
-            curr = ''.join(bits)
-            if curr!=prev:
-                if not self._target.startswith(curr): self.fail(); return
-                if curr==self._target:        self.defuse(); return
-                prev=curr
+            # read the current 0/1 state of each switch
+            bits = []
+            for pin in self._component:
+                if hasattr(pin, "read"):
+                    bits.append(str(int(pin.read())))
+                else:
+                    bits.append(str(int(pin.value)))
+            current = "".join(bits)
+
+            # only defuse on a full match
+            if current == self._target:
+                self.defuse()
+                return
+
             sleep(0.1)
+
     def __str__(self):
-        return "DEFUSED" if self._defused else ''.join('1' if (p.read() if hasattr(p,'read') else p.value) else '0' for p in self._component)
+        if self._defused:
+            return "DEFUSED"
+        return "".join(
+            "1" if (p.read() if hasattr(p, "read") else p.value) else "0"
+            for p in self._component
+        )
