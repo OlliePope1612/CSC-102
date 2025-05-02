@@ -185,9 +185,9 @@ class Button(PhaseThread):
         self._colors = ['R', 'G', 'B']
         self._color_index = self._colors.index(self._color) if self._color in self._colors else 0
     def _set_color(self, color):
-        self._rgb[0].value = (self._color=='R')
-        self._rgb[1].value = (self._color=='G')
-        self._rgb[2].value = (self._color=='B')
+        self._rgb[0].value = (color=='R')
+        self._rgb[1].value = (color=='G')
+        self._rgb[2].value = (color=='B')
     
     def run(self):
         
