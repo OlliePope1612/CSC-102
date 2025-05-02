@@ -127,10 +127,7 @@ class Timer(PhaseThread):
     def pause(self):
         self._paused = not self._paused
         self._component.blink_rate = (2 if self._paused else 0)
-
-(self):
-        self._paused = not self._paused
-        self._component.blink_rate = (2 if self._paused else 0)
+        
     def __str__(self): return "DEFUSED" if self._defused else f"{self._min}:{self._sec}"
 
 # Keypad phase – free entry until full length
