@@ -210,7 +210,8 @@ class Wires(PhaseThread):
 # Button phase — minimal, single‐color, press-and-release defuse logic
 # -----------------------------------------------------------------------------
 class Button(PhaseThread):
-    def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
+    colors = ["R", "G", "B"]
+    def __init__(self, state_pin, rgb_pins, target, initial_color, timer, name="Button"):
         """
         state_pin:   the DigitalInOut for the pushbutton state
         rgb_pins:    [R_pin, G_pin, B_pin] DigitalInOut outputs
@@ -224,23 +225,28 @@ class Button(PhaseThread):
         self._color  = color
         self._pressed = False
 
-        # immediately light exactly that one LED
-        self._set_color(color)
+        # set up the color cycle
+        self._color_index = Button.colors.index(initial_color)
+        self._last_cycle  = time.time()
+        # light the starting color
+        self._set_color(initial_color)
+
+
+    def _set_color(self, color):
+        # False → LED on; True → LED off
+        self._rgb[0].value = (color != "R")
+        self._rgb[1].value = (color != "G")
+        self._rgb[2].value = (color != "B")
         
 
     def run(self):
-        self._rgb[0].value = (color == "R")
-        self._rgb[1].value = (color == "G")
-        self._rgb[2].value = (color == "B")
-        
         self._running = True
-        now = time.time()
         while self._running:
-            if now - last_color_change >= 10:
-                self._color_index = (self._color_index + 1) % 3
-                self._color = self._colors[self._color_index]
-                self._set_color(self._color)
-                last_color_change = now
+            now = time.time()
+            if now - self._last_cycle >= 10:
+                self._last_cycle = now
+                self._color_index = (self._color_index + 1) % len(Button.colors)
+                self._set_color(Button.colors[self._color_index])
             # Step 1: Wait for button press
             while not self._component.value:
                 if not self._running:
