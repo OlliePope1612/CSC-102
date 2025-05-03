@@ -235,16 +235,20 @@ class Button(PhaseThread):
 
     def run(self):
         self._running = True
+        debounce = False
         while self._running:
             state = self._component.value   # True when pressed
             if state and not self._pressed:
                 # you just pressed it down
                 self._pressed = True
+                debounce = False
 
-            if not state and self._pressed:
+            if not state and self._pressed and not debounce:
                 # you just released it → check target
                 # R (target None) always defuses on release
                 # G/B defuse only if the digit appears in the Timer’s seconds
+                debounce = True
+                self._pressed = False
                 if (self._target is None
                     or str(self._target) in self._timer._sec):
                     self.defuse()
