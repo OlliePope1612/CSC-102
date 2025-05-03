@@ -226,14 +226,13 @@ class Button(PhaseThread):
 
         # immediately light exactly that one LED
         self._set_color(color)
-
-    def _set_color(self, color):
-        # False => LED on; True => LED off
-        self._rgb[0].value = (color != "R")
-        self._rgb[1].value = (color != "G")
-        self._rgb[2].value = (color != "B")
+        
 
     def run(self):
+        self._rgb[0].value = (color == "R")
+        self._rgb[1].value = (color == "G")
+        self._rgb[2].value = (color == "B")
+        
         self._running = True
         now = time.time()
         while self._running:
