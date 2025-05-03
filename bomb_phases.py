@@ -210,7 +210,7 @@ class Wires(PhaseThread):
 # Button phase — minimal, single‐color, press-and-release defuse logic
 # -----------------------------------------------------------------------------
 class Button(PhaseThread):
-    colors = ["R", "G", "B"]
+    #colors = ["R", "G", "B"]
     def __init__(self, state_pin, rgb_pins, target, initial_color, timer, name="Button"):
         super().__init__(name, state_pin, target)
         self._rgb    = rgb_pins
@@ -218,28 +218,35 @@ class Button(PhaseThread):
         self._pressed = False
 
         # set up the color cycle
-        self._color_index = Button.colors.index(initial_color)
-        self._last_cycle  = time.time()
-        self._cycle_period = 10.0
+        #self._color_index = Button.colors.index(initial_color)
+        #self._last_cycle  = time.time()
+        #self._cycle_period = 10.0
         # light the starting color
-        self._set_color(initial_color)
+        #self._set_color(initial_color)
 
 
-    def _set_color(self, color):
+    """def _set_color(self, color):
         # False → LED on; True → LED off
         self._rgb[0].value = (color != "R")
         self._rgb[1].value = (color != "G")
-        self._rgb[2].value = (color != "B")
+        self._rgb[2].value = (color != "B")""""
         
 
     def run(self):
         self._running = True
         while self._running:
-            now = time.time()
-            if now - self._last_cycle >= self._cycle_period:
-                self._last_cycle = now
-                self._color_index = (self._color_index + 1) % len(Button.colors)
-                self._set_color(Button.colors[self._color_index])
+            elapsed = COUNTDOWN - self._timer._value
+            phase = (elapsed // 10) % 3
+
+            if phase == 0:
+                self._set_color("R")
+                self._target = None
+            elif phase == 1:
+                self._set_color("G")
+                self._target = [str(n) for n in range(6,10)] + ["0"]
+            elif phase == 2:
+                self._set_color("B")
+                self._target = [str(n) for n in range(0,6)]
             # Step 1: Wait for button press
             while not self._component.value:
                 if not self._running:
