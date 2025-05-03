@@ -129,6 +129,7 @@ wires_target = int("00100", 2)                # only blue wire should be cut (mi
 toggles_target = int("1011", 2)              # switch pattern: ON OFF ON ON
 serial = "DRUNKNCLAM"                         # static serial
 button_target = None                          # handled dynamically in Button class
+button_color = None
 
 # bootup splash text
 boot_text = (
