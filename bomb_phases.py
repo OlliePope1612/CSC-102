@@ -248,9 +248,10 @@ class Button(PhaseThread):
                 if (self._target is None
                     or str(self._target) in self._timer._sec):
                     self.defuse()
+                    return
                 else:
                     self.incorrect()
-                return
+                
 
             sleep(0.1)
 
