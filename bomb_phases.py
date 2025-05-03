@@ -212,13 +212,6 @@ class Wires(PhaseThread):
 class Button(PhaseThread):
     colors = ["R", "G", "B"]
     def __init__(self, state_pin, rgb_pins, target, initial_color, timer, name="Button"):
-        """
-        state_pin:   the DigitalInOut for the pushbutton state
-        rgb_pins:    [R_pin, G_pin, B_pin] DigitalInOut outputs
-        target:      None (for red) or a digit-char for G/B
-        color:       one of "R","G","B"
-        timer:       your Timer instance (to read ._sec for G/B)
-        """
         super().__init__(name, state_pin, target)
         self._rgb    = rgb_pins
         self._timer  = timer
@@ -227,6 +220,7 @@ class Button(PhaseThread):
         # set up the color cycle
         self._color_index = Button.colors.index(initial_color)
         self._last_cycle  = time.time()
+        self._cycle_period = 10.0
         # light the starting color
         self._set_color(initial_color)
 
@@ -242,7 +236,7 @@ class Button(PhaseThread):
         self._running = True
         while self._running:
             now = time.time()
-            if now - self._last_cycle >= 10:
+            if now - self._last_cycle >= self._cycle_period:
                 self._last_cycle = now
                 self._color_index = (self._color_index + 1) % len(Button.colors)
                 self._set_color(Button.colors[self._color_index])
