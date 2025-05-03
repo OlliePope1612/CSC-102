@@ -117,7 +117,7 @@ class PhaseThread(Thread):
         self._component = component; self._target = target
         self._defused = False; self._failed = False; self._running = False
     def defuse(self): self._defused, self._running = True, False
-    def fail( self): self._failed,  self._running = True, True
+    def fail(self): self._failed,  self._running = True, True
 
 # Timer Logic
 class Timer(PhaseThread):
