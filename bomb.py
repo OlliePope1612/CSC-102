@@ -42,8 +42,9 @@ def check_phases():
             continue
         if phase._failed:
             strikes_left  -= 1
-            active_phases -= 1
+            #active_phases -= 1
             handled_phases.add(phase)
+            phase._failed = False
         elif phase._defused:
             active_phases -= 1
             handled_phases.add(phase)
