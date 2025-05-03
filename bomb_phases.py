@@ -222,7 +222,6 @@ class Button(PhaseThread):
         super().__init__(name, state_pin, target)
         self._rgb    = rgb_pins
         self._timer  = timer
-        self._color  = color
         self._pressed = False
 
         # set up the color cycle
