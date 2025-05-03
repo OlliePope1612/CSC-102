@@ -184,7 +184,7 @@ boot_text = (
     "*" + " ".join(str(n%10) for n in range(26)) + "\n"
     "Rendering phases...\x00"
 )
-from bombphases import Keypad, Wires, Toggles
+from bomb_phases import Keypad, Wires, Toggles
 import random
 
 # === FAMILY GUY THEME: Randomized bomb targets ===
