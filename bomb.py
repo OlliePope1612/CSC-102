@@ -21,39 +21,33 @@ handled_phases = set()
 ###########
 # Helper functions
 ###########
-
 def check_phases():
     global strikes_left, active_phases, handled_phases
 
-    # 1) Refresh the labels
-    try: gui._ltimer[  "text"] = f"Time left: {timer}"
+    try: gui._ltimer  ["text"] = f"Time left: {timer}"
     except: pass
     try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
     except: pass
-    try: gui._lwires[  "text"] = f"Wires phase: {wires}"
+    try: gui._lwires  ["text"] = f"Wires phase: {wires}"
     except: pass
-    try: gui._lbutton["text"] = f"Button phase: {button}"
+    try: gui._lbutton ["text"] = f"Button phase: {button}"
     except: pass
     try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
     except: pass
     try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
     except: pass
 
-    # 2) Handle each phase exactly once
     for phase in (keypad, wires, button, toggles):
         if phase in handled_phases:
             continue
-
         if phase._failed:
             strikes_left  -= 1
             active_phases -= 1
             handled_phases.add(phase)
-
         elif phase._defused:
             active_phases -= 1
             handled_phases.add(phase)
 
-    # 3) End‐of‐game?
     if strikes_left <= 0:
         gui.conclusion(success=False)
     elif active_phases <= 0:
@@ -63,15 +57,13 @@ def check_phases():
         
 def setup_phases():
     global timer, keypad, wires, button, toggles, strikes_left, active_phases
-
     strikes_left  = NUM_STRIKES
     active_phases = NUM_PHASES
 
     timer   = Timer(component_7seg, COUNTDOWN)
     keypad  = Keypad(component_keypad, str(keypad_target))
-    wires   = Wires(component_wires, bin(wires_target)[2:].zfill(5))
-    button  = Button(component_button_state,
-                     component_button_RGB,
+    wires   = Wires(component_wires,    bin(wires_target)[2:].zfill(5))
+    button  = Button(component_button_state, component_button_RGB,
                      button_target, button_color, timer)
     toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(4))
 
