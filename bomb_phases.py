@@ -211,7 +211,7 @@ class Wires(PhaseThread):
 # -----------------------------------------------------------------------------
 class Button(PhaseThread):
     #colors = ["R", "G", "B"]
-    def __init__(self, state_pin, rgb_pins, target, initial_color, timer, name="Button"):
+    def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
         super().__init__(name, state_pin, target)
         self._rgb    = rgb_pins
         self._timer  = timer
@@ -223,7 +223,10 @@ class Button(PhaseThread):
         #self._cycle_period = 10.0
         # light the starting color
         #self._set_color(initial_color)
-        
+    def _set_color(self, color):
+        self._rgb[0].value = (color != "R")
+        self._rgb[1].value = (color != "G")
+        self._rgb[2].value = (color != "B")
 
     def run(self):
         self._running = True
