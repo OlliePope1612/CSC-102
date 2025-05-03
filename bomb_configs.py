@@ -1,7 +1,6 @@
 #################################
 # CSC 102 Defuse the Bomb Project
-# Configuration file – Day 5 Hardware Integration
-# Team:
+# Configuration file – Day 5 Hardware Integration (Family Guy themed)
 #################################
 
 # Detect environment: real Raspberry Pi vs. mock (macOS) mode
@@ -17,12 +16,12 @@ except ImportError:
 # Enable debug prints and mock modules only when not on the Pi
 debug_mode = not RPi
 DEBUG = debug_mode
-ANIMATE = True        		# animate the LCD boot text?
-SHOW_BUTTONS = True   		# show Pause/Quit buttons in GUI (only matters in mock)
-COUNTDOWN = 300       		# initial countdown (seconds)
-NUM_STRIKES = 5       		# allowed strikes before explosion
-NUM_PHASES = 5        		# total phases: Timer, Keypad, Wires, Button, Toggles
-STAR_CLEARS_PASS = True		# allows star key to clear passcode
+ANIMATE = True                # animate the LCD boot text?
+SHOW_BUTTONS = True           # show Pause/Quit buttons in GUI (only matters in mock)
+COUNTDOWN = 300               # initial countdown (seconds)
+NUM_STRIKES = 5               # allowed strikes before explosion
+NUM_PHASES = 5                # total phases: Timer, Keypad, Wires, Button, Toggles
+STAR_CLEARS_PASS = True       # allows star key to clear passcode
 
 # Base imports used in both modes
 from random import randint, shuffle, choice
@@ -102,69 +101,34 @@ else:
     component_toggles      = [MockTogglePin() for _ in range(4)]
 
 ###########
-# helper functions: serial generation & keypad cipher
+# Family Guy Themed Quotes
 ###########
+quagmire_lines = [
+    "Giggity! This keypad's hotter than Lois!",
+    "I'd tap that... code.",
+    "Giggity giggity goo!"
+]
 
-def genSerial():
-    # digits for toggles sum
-    serial_digits = []
-    toggle_value  = randint(1, 7)  # restrict to 3-bit range 1..7
-    while len(serial_digits) < 3 or toggle_value - sum(serial_digits) > 0:
-        d = randint(0, min(9, toggle_value - sum(serial_digits)))
-        serial_digits.append(d)
+joe_lines = [
+    "MY WHEELCHAIR'S DEAD!",
+    "HELP! PUSH ME CLOSER!",
+    "PETER, YOU'RE OUR ONLY HOPE!"
+]
 
-    # wires pattern: pick 3 of 5 bits
-    jumper_indexes = [0]*5
-    while sum(jumper_indexes) < 3:
-        jumper_indexes[randint(0, 4)] = 1
-    jumper_value   = int("".join(str(n) for n in jumper_indexes), 2)
-    jumper_letters = [ chr(i+65) for i,n in enumerate(jumper_indexes) if n == 1]
+cleveland_lines = [
+    "No no no no NO!",
+    "Oh, that's not good...",
+    "I'm getting outta here!"
+]
 
-    # build & shuffle serial
-    serial = [str(d) for d in serial_digits] + jumper_letters
-    shuffle(serial)
-    serial += [ choice([chr(n) for n in range(70,91)]) ]
-    return "".join(serial), toggle_value, jumper_value
-
-
-def genKeypadCombination():
-    def encrypt(keyword, rot):
-        return "".join(chr((ord(c)-65+rot)%26+65) for c in keyword)
-    def digits(passphrase):
-        keys = [None, None, "ABC","DEF","GHI","JKL","MNO","PRS","TUV","WXY"]
-        combo = ""
-        for c in passphrase:
-            for i,k in enumerate(keys):
-                if k and c in k:
-                    combo += str(i)
-        return combo
-
-    keywords = {"BANDIT":"RIVER","BUCKLE":"FADED","CANOPY":"FOXES",
-                "DEBATE":"THROW","FIERCE":"TRICK","GIFTED":"CYCLE",
-                "IMPACT":"STOLE","LONELY":"TOADY","MIGHTY":"ALOOF",
-                "NATURE":"CARVE","REBORN":"CLIMB","RECALL":"FEIGN",
-                "SYSTEM":"LEAVE","TAKING":"SPINY","WIDELY":"BOUND",
-                "ZAGGED":"YACHT"}
-    rot        = randint(1,25)
-    keyword, passphrase = choice(list(keywords.items()))
-    cipher_keyword = encrypt(keyword, rot)
-    combination    = digits(passphrase)
-    return keyword, cipher_keyword, rot, combination, passphrase
-
-###############################
-# generate bomb specifics
-###############################
-serial, toggles_target, wires_target = genSerial()
-keyword, cipher_keyword, rot, keypad_target, passphrase = genKeypadCombination()
-button_color = None
-button_target = None
-
-if DEBUG:
-    print(f"Serial number: {serial}")
-    print(f"Toggles target: {bin(toggles_target)[2:].zfill(len(component_toggles))}/{toggles_target}")
-    print(f"Wires target:   {bin(wires_target)[2:].zfill(len(component_wires))}/{wires_target}")
-    print(f"Keypad target:  {keypad_target}/{passphrase}/{cipher_keyword}(rot={rot})")
-    print(f"Button target:  {button_target}")
+###########
+# Hardcoded Bomb Setup (Scripted)
+###########
+keypad_target = "69420"                       # 5-digit code
+wires_target = int("00100", 2)                # only blue wire should be cut (middle wire)
+toggles_target = int("1011", 2)              # switch pattern: ON OFF ON ON
+serial = "DRUNKNCLAM"                         # static serial
+button_target = None                          # handled dynamically in Button class
 
 # bootup splash text
 boot_text = (
@@ -174,28 +138,17 @@ boot_text = (
     "*System model: 102BOMBv4.2\n"
     f"*Serial number: {serial}\n"
     "Encrypting keypad...\n\x00"
-    f"*Keyword: {cipher_keyword}; key: {rot}\n"
+    f"*Keyword: CLAM; key: 6\n"
     "*" + " ".join(ascii_uppercase) + "\n"
     "*" + " ".join(str(n%10) for n in range(26)) + "\n"
     "Rendering phases...\x00"
 )
-from bomb_phases import Keypad, Wires, Toggles
-import random
 
-# === FAMILY GUY THEME: Randomized bomb targets ===
-
-# Generate random target values
-correct_code = str(random.randint(10000, 99999))  # 5-digit code for keypad
-correct_wire = random.choice(["orange", "yellow", "blue", "green", "purple"])  # unplug wire
-correct_switch_pattern = "".join([str(random.choice([0, 1])) for _ in range(4)])  # e.g., "1010"
-
-# Show debug values if needed
 if DEBUG:
     print("\n[DEBUG MODE] Bomb Configuration:")
-    print(f"Keypad code: {correct_code}")
-    print(f"Correct wire: {correct_wire}")
-    print(f"Switch pattern: {correct_switch_pattern}\n")
-
+    print(f"Keypad code: {keypad_target}")
+    print(f"Correct wire bit pattern: {bin(wires_target)[2:].zfill(5)}")
+    print(f"Switch pattern: {bin(toggles_target)[2:].zfill(4)}")
 # === Component-phase mapping ===
 phase_defs = [
     (component_keypad, Keypad, correct_code),
