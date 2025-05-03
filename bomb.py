@@ -6,7 +6,53 @@
 from tkinter import Tk
 from bomb_configs import *        # brings in component_7seg, component_keypad, etc., plus COUNTDOWN, targets, RPi
 from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd
+from bombphases import Keypad, Wires, Switches
+from bomb_configs import component_keypad, component_wiregroup, component_switchgroup
 
+# --- Story Text Output Handler ---
+def print_or_display(text, component=None):
+    """Helper to print or display text in GUI."""
+    if component and hasattr(component, 'display_text'):
+        component.display_text(text)
+    else:
+        print(text)
+
+# --- Game Intro ---
+def show_intro():
+    print("=== FAMILY GUY: PETER GRIFFIN VS. THE BOMB ===\n")
+    print("The Drunken Clam is rigged to explode. Help Peter Griffin defuse the bomb!\n")
+
+# --- Game Outro ---
+def show_success():
+    print("\n🎉 YOU SAVED THE DRUNKEN CLAM! 🎉")
+    print("Peter: 'Heh heh... not bad for a fat guy in green pants.'")
+
+def show_failure():
+    print("💥 The bomb exploded. Peter is toast.")
+    print("Quagmire: 'Well... that's gonna leave a mark.'")
+
+# --- Run All Bomb Phases ---
+def run_bomb_sequence():
+    phases = [
+        Keypad(component_keypad, "69420"),
+        Wires(component_wiregroup, "blue"),
+        Switches(component_switchgroup, [1, 0, 1, 1])
+    ]
+
+    for phase in phases:
+        phase.start()
+        phase.join()
+
+        if hasattr(phase, "failed") and phase.failed():
+            show_failure()
+            return
+
+    show_success()
+
+# --- Main Execution ---
+if __name__ == "__main__":
+    show_intro()
+    run_bomb_sequence()
 
 # Dialogue for family guy
 dialogues = {
