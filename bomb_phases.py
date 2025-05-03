@@ -235,8 +235,13 @@ class Button(PhaseThread):
 
     def run(self):
         self._running = True
-    
+        now = time.time()
         while self._running:
+            if now - last_color_change >= 10:
+                self._color_index = (self._color_index + 1) % 3
+                self._color = self._colors[self._color_index]
+                self._set_color(self._color)
+                last_color_change = now
             # Step 1: Wait for button press
             while not self._component.value:
                 if not self._running:
