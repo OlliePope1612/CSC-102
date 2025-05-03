@@ -158,9 +158,9 @@ serial, toggles_target, wires_target = genSerial()
 keyword, cipher_keyword, rot, keypad_target, passphrase = genKeypadCombination()
 button_color = choice(["R","G","B"])
 if button_color == "G":
-    button_target = next(n for n in serial if n.isdigit())
+    button_target = [str(n) for n in range(6,10)] + ["0"]
 elif button_color == "B":
-    button_target = next(n for n in reversed(serial) if n.isdigit())
+    button_target = [str(n) for n in range(1,6)]
 else:
     button_target = None
 
