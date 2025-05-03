@@ -156,7 +156,7 @@ def genKeypadCombination():
 ###############################
 serial, toggles_target, wires_target = genSerial()
 keyword, cipher_keyword, rot, keypad_target, passphrase = genKeypadCombination()
-button_color = choice(["R","G","B"])
+#button_color = choice(["R","G","B"])
 if button_color == "G":
     button_target = [str(n) for n in range(6,10)] + ["0"]
 elif button_color == "B":
