@@ -6,53 +6,6 @@
 from tkinter import Tk
 from bomb_configs import *        # brings in component_7seg, component_keypad, etc., plus COUNTDOWN, targets, RPi
 from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd
-from bombphases import Keypad, Wires, Switches
-from bomb_configs import component_keypad, component_wiregroup, component_switchgroup
-
-# --- Story Text Output Handler ---
-def print_or_display(text, component=None):
-    """Helper to print or display text in GUI."""
-    if component and hasattr(component, 'display_text'):
-        component.display_text(text)
-    else:
-        print(text)
-
-# --- Game Intro ---
-def show_intro():
-    print("=== FAMILY GUY: PETER GRIFFIN VS. THE BOMB ===\n")
-    print("The Drunken Clam is rigged to explode. Help Peter Griffin defuse the bomb!\n")
-
-# --- Game Outro ---
-def show_success():
-    print("\n🎉 YOU SAVED THE DRUNKEN CLAM! 🎉")
-    print("Peter: 'Heh heh... not bad for a fat guy in green pants.'")
-
-def show_failure():
-    print("💥 The bomb exploded. Peter is toast.")
-    print("Quagmire: 'Well... that's gonna leave a mark.'")
-
-# --- Run All Bomb Phases ---
-def run_bomb_sequence():
-    phases = [
-        Keypad(component_keypad, "69420"),
-        Wires(component_wiregroup, "blue"),
-        Switches(component_switchgroup, [1, 0, 1, 1])
-    ]
-
-    for phase in phases:
-        phase.start()
-        phase.join()
-
-        if hasattr(phase, "failed") and phase.failed():
-            show_failure()
-            return
-
-    show_success()
-
-# --- Main Execution ---
-if __name__ == "__main__":
-    show_intro()
-    run_bomb_sequence()
 
 # Dialogue for family guy
 dialogues = {
@@ -98,10 +51,12 @@ def check_phases():
 
     if strikes_left <= 0:
         gui.conclusion(success=False)
-    elif active_phases <= 0:
-        gui.conclusion(success=True)
     else:
         gui.after(100, check_phases)
+        
+    if len(handled_phases) == 4:
+        gui.conclusion(success=True)
+        timer._running = False
         
 def setup_phases():
     global timer, keypad, wires, button, toggles, strikes_left, active_phases
@@ -109,11 +64,11 @@ def setup_phases():
     active_phases = NUM_PHASES
 
     timer   = Timer(component_7seg, COUNTDOWN)
-    keypad  = Keypad(component_keypad, str(keypad_target))
-    wires   = Wires(component_wires,    bin(wires_target)[2:].zfill(5))
+    keypad  = Keypad(component_keypad, str(correct_code))
+    wires   = Wires(component_wires,    bin(correct_wire)[2:].zfill(5))
     button  = Button(component_button_state, component_button_RGB,
                      button_target, button_color, timer)
-    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(4))
+    toggles = Toggles(component_toggles, bin(correct_toggles)[2:].zfill(4))
 
     gui.setTimer(timer)
     gui.setButton(button)
@@ -153,5 +108,3 @@ boot_duration = 1000 + len(boot_text) * 50
 gui.after(boot_duration, start_game)
 
 window.mainloop()
-
-
