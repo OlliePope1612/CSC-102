@@ -17,6 +17,25 @@ import time
 #########
 # GUI class
 #########
+
+# --- Family Guy Character Commentary ---
+quagmire_lines = [
+    "Giggity! This keypad's hotter than Lois!",
+    "I'd tap that... code.",
+    "Giggity giggity goo!"
+]
+
+joe_lines = [
+    "MY WHEELCHAIR'S DEAD!",
+    "HELP! PUSH ME CLOSER!",
+    "PETER, YOU'RE OUR ONLY HOPE!"
+]
+
+cleveland_lines = [
+    "No no no no NO!",
+    "Oh, that's not good...",
+    "I'm getting outta here!"
+]
 class Lcd(Frame):
     def __init__(self, window):
         super().__init__(window, bg="black")
