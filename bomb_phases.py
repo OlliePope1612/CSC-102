@@ -239,13 +239,13 @@ class Button(PhaseThread):
                 last_phase = phase
                 if phase == 0:
                     self._set_color("R")
-                    self._target = None
+                    self._target = [str(n) for n in range (1,4)]
                 elif phase == 1:
                     self._set_color("G")
-                    self._target = [str(n) for n in range(6,10)] + ["0"]
+                    self._target = [str(n) for n in range(4,7)]
                 elif phase == 2:
                     self._set_color("B")
-                    self._target = [str(n) for n in range(0,6)]
+                    self._target = [str(n) for n in range(7,10)] + ["0"]
             # Step 1: Wait for button press
             while not self._component.value:
                 if not self._running:
