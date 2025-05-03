@@ -13,6 +13,7 @@ from time import sleep
 import os, sys
 from PIL import Image, ImageTk
 import time
+from bomb_configs import quagmire_lines, joe_lines, cleveland_lines
 
 #########
 # GUI class
@@ -38,39 +39,62 @@ cleveland_lines = [
 ]
 class Lcd(Frame):
     def __init__(self, window):
-        super().__init__(window, bg="black")
+        super().__init__(window)
         window.attributes("-fullscreen", True)
+        # load a Family Guy background
+        try:
+            bg = Image.open("family_guy_bg.jpg")
+            bg = bg.resize((window.winfo_screenwidth(), window.winfo_screenheight()), Image.ANTIALIAS)
+            self._bg_image = ImageTk.PhotoImage(bg)
+            bg_label = Label(self, image=self._bg_image)
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        except Exception:
+            # fallback to dark background
+            self.configure(bg="#101010")
         self._timer = None
         self._button = None
         self.setupBoot()
 
     def setupBoot(self):
-        for c,w in enumerate((1,2,1)): self.columnconfigure(c, weight=w)
-        self._lscroll = Label(self, bg="black", fg="white",
-                              font=("Courier New",14), text="", justify=LEFT)
-        self._lscroll.grid(row=0, column=0, columnspan=3, sticky=W)
+        # scrolling boot text on top in Family Guy font
+        for c, w in enumerate((1,2,1)): self.columnconfigure(c, weight=w)
+        self._lscroll = Label(self, bg="#000000", fg="#00ff00",
+                              font=("Comic Sans MS", 16, "bold"), text="", justify=LEFT)
+        self._lscroll.grid(row=0, column=0, columnspan=3, sticky=W, padx=20, pady=10)
         self.pack(fill=BOTH, expand=True)
 
     def setup(self):
-        self._ltimer   = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Time left: ")
-        self._lkeypad  = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Keypad phase: ")
-        self._lwires   = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Wires phase: ")
-        self._lbutton  = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Button phase: ")
-        self._ltoggles = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Toggles phase: ")
-        self._lstrikes = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Strikes left: ")
-        self._ltimer.grid(  row=1, column=0, columnspan=3, sticky=W)
-        self._lkeypad.grid( row=2, column=0, columnspan=3, sticky=W)
-        self._lwires.grid(  row=3, column=0, columnspan=3, sticky=W)
-        self._lbutton.grid( row=4, column=0, columnspan=3, sticky=W)
-        self._ltoggles.grid(row=5, column=0, columnspan=2, sticky=W)
-        self._lstrikes.grid(row=5, column=2,                sticky=W)
+        # phase status labels with themed styling
+        style = {"bg": "#000000", "fg": "#ffcc00", "font": ("Comic Sans MS", 18, "bold"), "justify": LEFT}
+        self._ltimer   = Label(self, text="Time left: ", **style)
+        self._lkeypad  = Label(self, text="Keypad phase: ", **style)
+        self._lwires   = Label(self, text="Wires phase: ", **style)
+        self._lbutton  = Label(self, text="Button phase: ", **style)
+        self._ltoggles = Label(self, text="Toggles phase: ", **style)
+        self._lstrikes = Label(self, text="Strikes left: ", **style)
+        # place labels
+        self._ltimer.grid(  row=1, column=0, columnspan=3, sticky=W, padx=20)
+        self._lkeypad.grid( row=2, column=0, columnspan=3, sticky=W, padx=20)
+        self._lwires.grid(  row=3, column=0, columnspan=3, sticky=W, padx=20)
+        self._lbutton.grid( row=4, column=0, columnspan=3, sticky=W, padx=20)
+        self._ltoggles.grid(row=5, column=0, columnspan=2, sticky=W, padx=20)
+        self._lstrikes.grid(row=5, column=2,                sticky=W, padx=20)
         if SHOW_BUTTONS:
-            self._bpause = tkinter.Button(self, text="Pause", font=("Courier New",18),
-                                          bg="red", fg="white", command=self.pause)
-            self._bquit  = tkinter.Button(self, text="Quit",  font=("Courier New",18),
-                                          bg="red", fg="white", command=self.quit)
-            self._bpause.grid(row=6, column=0, pady=40)
-            self._bquit.grid( row=6, column=2, pady=40)
+            btn_style = {"font": ("Comic Sans MS", 18, "bold"), "bg": "#ff0000", "fg": "white"}
+            self._bpause = tkinter.Button(self, text="Pause", command=self.pause, **btn_style)
+            self._bquit  = tkinter.Button(self, text="Quit",  command=self.quit,  **btn_style)
+            self._bpause.grid(row=6, column=0, pady=30)
+            self._bquit.grid( row=6, column=2, pady=30)
+        # add rotating Family Guy quotes at bottom
+        quote_style = {"bg": "#000000", "fg": "#ffffff", "font": ("Comic Sans MS", 16, "italic"), "justify": CENTER}
+        self._lquote = Label(self, text="", **quote_style)
+        self._lquote.grid(row=7, column=0, columnspan=3, pady=20)
+        self.update_quote()
+
+    def update_quote(self):
+        line = random.choice(quagmire_lines + joe_lines + cleveland_lines)
+        self._lquote.config(text=line)
+        self.after(5000, self.update_quote)
 
     def setTimer(self, timer):  self._timer = timer
     def setButton(self, button):self._button = button
@@ -79,28 +103,24 @@ class Lcd(Frame):
     def conclusion(self, success=False):
         # clear all
         for w in self.winfo_children(): w.destroy()
-        # banner
-        msg   = "DEFUSED!" if success else "💥 BOOM! 💥"
+        # Family Guy wrap-up banner
+        msg   = "YOU DID IT!" if success else "OH NO, IT EXPLODED!"
         color = "#00ff00" if success else "#ff0000"
-        Label(self, text=msg, bg="black", fg=color,
-              font=("Courier New",48,"bold")).place(relx=0.5, rely=0.3, anchor="center")
-        # image
-        imgfile = "yayyy.jpg" if success else "boom.jpg"
+        Label(self, text=msg, bg="#000000", fg=color,
+              font=("Comic Sans MS", 48, "bold")).place(relx=0.5, rely=0.2, anchor="center")
+        # character image
+        imgfile = "peter_drunk.jpg" if success else "meg.jpg"
         try:
             img = Image.open(imgfile).resize((300,300), Image.ANTIALIAS)
             photo = ImageTk.PhotoImage(img)
-            Label(self, image=photo, bg="black").place(relx=0.5, rely=0.6, anchor="center")
+            Label(self, image=photo, bg="#000000").place(relx=0.5, rely=0.5, anchor="center")
             self._banner_img = photo
         except:
             pass
-        # retry/quit buttons
-        y = 0.8
-        tkinter.Button(self, text="Retry", font=("Courier New",18),
-                        bg="gray20", fg="white", command=self.retry
-                       ).place(relx=0.3, rely=y, anchor="center")
-        tkinter.Button(self, text="Quit",  font=("Courier New",18),
-                        bg="gray20", fg="white", command=self.quit
-                       ).place(relx=0.7, rely=y, anchor="center")
+        # retry/quit buttons themed
+        btn_style = {"font": ("Comic Sans MS", 18, "bold"), "bg": "#00aced", "fg": "white"}
+        tkinter.Button(self, text="Retry", command=self.retry, **btn_style)
+        tkinter.Button(self, text="Quit",  command=self.quit,  **btn_style)
 
     def retry(self): os.execv(sys.executable, [sys.executable]+[sys.argv[0]])
     def quit(self):
