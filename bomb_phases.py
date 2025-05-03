@@ -250,8 +250,10 @@ class Button(PhaseThread):
                 sleep(0.05)
     
             # Step 3: Button was just released – check target
-            if self._target is None or str(self._target) in self._timer._sec:
+            current_sec = self._timer._sec[-1]
+            if self._target is not None and current_sec in self._target:
                 self.defuse()
+                self.running = False
                 return
             else:
                 self.incorrect()
