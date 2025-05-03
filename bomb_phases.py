@@ -230,19 +230,22 @@ class Button(PhaseThread):
 
     def run(self):
         self._running = True
+        last_phase = -1
         while self._running:
             elapsed = COUNTDOWN - self._timer._value
             phase = (elapsed // 10) % 3
 
-            if phase == 0:
-                self._set_color("R")
-                self._target = None
-            elif phase == 1:
-                self._set_color("G")
-                self._target = [str(n) for n in range(6,10)] + ["0"]
-            elif phase == 2:
-                self._set_color("B")
-                self._target = [str(n) for n in range(0,6)]
+            if phase != last_phase:
+                last_phase = phase
+                if phase == 0:
+                    self._set_color("R")
+                    self._target = None
+                elif phase == 1:
+                    self._set_color("G")
+                    self._target = [str(n) for n in range(6,10)] + ["0"]
+                elif phase == 2:
+                    self._set_color("B")
+                    self._target = [str(n) for n in range(0,6)]
             # Step 1: Wait for button press
             while not self._component.value:
                 if not self._running:
