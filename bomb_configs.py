@@ -453,3 +453,26 @@ boot_text = (
     "*" + " ".join(str(n%10) for n in range(26)) + "\n"
     "Rendering phases...\x00"
 )
+from bombphases import Keypad, Wires, Toggles
+import random
+
+# === FAMILY GUY THEME: Randomized bomb targets ===
+
+# Generate random target values
+correct_code = str(random.randint(10000, 99999))  # 5-digit code for keypad
+correct_wire = random.choice(["orange", "yellow", "blue", "green", "purple"])  # unplug wire
+correct_switch_pattern = "".join([str(random.choice([0, 1])) for _ in range(4)])  # e.g., "1010"
+
+# Show debug values if needed
+if DEBUG:
+    print("\n[DEBUG MODE] Bomb Configuration:")
+    print(f"Keypad code: {correct_code}")
+    print(f"Correct wire: {correct_wire}")
+    print(f"Switch pattern: {correct_switch_pattern}\n")
+
+# === Component-phase mapping ===
+phase_defs = [
+    (component_keypad, Keypad, correct_code),
+    (component_wires,  Wires,  correct_wire),
+    (component_toggles, Toggles, correct_switch_pattern)
+]
