@@ -95,6 +95,11 @@ def bootup(n=0):
         delay = 25 if boot_text[n] != "\x00" else 750
         gui.after(delay, bootup, n + 1)
 
+def start_game():
+    gui.setup()
+    setup_phases()
+    window.after(100, check_phases)
+    
 ###########
 # MAIN
 ###########
