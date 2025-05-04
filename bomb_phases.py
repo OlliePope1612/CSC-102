@@ -3,189 +3,288 @@
 # GUI and Phase class definitions – Final Version
 #################################
 
-from tkinter import Tk, Toplevel, Label, Entry, Button, Checkbutton, IntVar
-from bomb_configs import *        # brings in component_7seg, component_keypad, etc., plus COUNTDOWN, targets, RPi
-from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd, and Family Guy lines
-import random
+# import the configs
+from bomb_configs import *            # brings in component_7seg, component_keypad, etc.
+# other imports
+from tkinter import *
+import tkinter
+from threading import Thread
+from time import sleep
+import os, sys
+from PIL import Image, ImageTk
+import time
 
-# Dialogue maps imported via bomb_phases: quagmire_lines, joe_lines, cleveland_lines
+#########
+# GUI class
+#########
 
-handled_phases = set()
+# --- Family Guy Character Commentary ---
+quagmire_lines = [
+    "Giggity! This keypad's hotter than Lois!",
+    "I'd tap that... code.",
+    "Giggity giggity goo!"
+]
 
-###########
-# Helper functions for Family Guy windows
-###########
+joe_lines = [
+    "MY WHEELCHAIR'S DEAD!",
+    "HELP! PUSH ME CLOSER!",
+    "PETER, YOU'RE OUR ONLY HOPE!"
+]
 
-def after_defuse(phase, callback):
-    """Invoke callback once phase._defused becomes True."""
-    if phase._defused:
-        callback()
-    else:
-        window.after(100, after_defuse, phase, callback)
+cleveland_lines = [
+    "No no no no NO!",
+    "Oh, that's not good...",
+    "I'm getting outta here!"
+]
+class Lcd(Frame):
+    def __init__(self, window):
+        super().__init__(window, bg="black")
+        window.attributes("-fullscreen", True)
+        self._timer = None
+        self._button = None
+        self.setupBoot()
 
-# --- KEYPAD PHASE WINDOW ---
-def show_keypad_window():
-    top = Toplevel(window)
-    top.title("Family Guy Keypad Challenge")
-    Label(top, text=random.choice(quagmire_lines),
-          font=("Courier New",16), wraplength=300).pack(pady=10)
-    entry = Entry(top, font=("Courier New",18), justify="center")
-    entry.pack(pady=10)
-    Button(top, text="Submit", font=("Courier New",14),
-           command=lambda: on_keypad_submit(entry, top)).pack(pady=5)
-    top.grab_set()
+    def setupBoot(self):
+        for c,w in enumerate((1,2,1)): self.columnconfigure(c, weight=w)
+        self._lscroll = Label(self, bg="black", fg="white",
+                              font=("Courier New",14), text="", justify=LEFT)
+        self._lscroll.grid(row=0, column=0, columnspan=3, sticky=W)
+        self.pack(fill=BOTH, expand=True)
 
-def on_keypad_submit(entry, top):
-    if entry.get() == keypad._target:
-        keypad.defuse()
-        top.destroy()
+    def setup(self):
+        self._ltimer   = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Time left: ")
+        self._lkeypad  = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Keypad phase: ")
+        self._lwires   = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Wires phase: ")
+        self._lbutton  = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Button phase: ")
+        self._ltoggles = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Toggles phase: ")
+        self._lstrikes = Label(self, bg="black", fg="#00ff00", font=("Courier New",18), text="Strikes left: ")
+        self._ltimer.grid(  row=1, column=0, columnspan=3, sticky=W)
+        self._lkeypad.grid( row=2, column=0, columnspan=3, sticky=W)
+        self._lwires.grid(  row=3, column=0, columnspan=3, sticky=W)
+        self._lbutton.grid( row=4, column=0, columnspan=3, sticky=W)
+        self._ltoggles.grid(row=5, column=0, columnspan=2, sticky=W)
+        self._lstrikes.grid(row=5, column=2,                sticky=W)
+        if SHOW_BUTTONS:
+            self._bpause = tkinter.Button(self, text="Pause", font=("Courier New",18),
+                                          bg="red", fg="white", command=self.pause)
+            self._bquit  = tkinter.Button(self, text="Quit",  font=("Courier New",18),
+                                          bg="red", fg="white", command=self.quit)
+            self._bpause.grid(row=6, column=0, pady=40)
+            self._bquit.grid( row=6, column=2, pady=40)
 
-# --- SWITCHES (TOGGLES) PHASE WINDOW ---
-def show_switch_window():
-    top = Toplevel(window)
-    top.title("Family Guy Switch Challenge")
-    Label(top, text=random.choice(joe_lines),
-          font=("Courier New",16), wraplength=300).pack(pady=10)
+    def setTimer(self, timer):  self._timer = timer
+    def setButton(self, button):self._button = button
+    def pause(self):           self._timer.pause()
 
-    vars = []
-    # create checkbuttons to build the toggle bitstring
-    for i in range(len(toggles._target)):
-        v = IntVar(value=0)
-        cb = Checkbutton(top, text=f"Switch {i+1}", variable=v,
-                         font=("Courier New",14))
-        cb.pack(anchor="w")
-        vars.append(v)
+    def conclusion(self, success=False):
+        # clear all
+        for w in self.winfo_children(): w.destroy()
+        # banner
+        msg   = "DEFUSED!" if success else "💥 BOOM! 💥"
+        color = "#00ff00" if success else "#ff0000"
+        Label(self, text=msg, bg="black", fg=color,
+              font=("Courier New",48,"bold")).place(relx=0.5, rely=0.3, anchor="center")
+        # image
+        imgfile = "yayyy.jpg" if success else "boom.jpg"
+        try:
+            img = Image.open(imgfile).resize((300,300), Image.ANTIALIAS)
+            photo = ImageTk.PhotoImage(img)
+            Label(self, image=photo, bg="black").place(relx=0.5, rely=0.6, anchor="center")
+            self._banner_img = photo
+        except:
+            pass
+        # retry/quit buttons
+        y = 0.8
+        tkinter.Button(self, text="Retry", font=("Courier New",18),
+                        bg="gray20", fg="white", command=self.retry
+                       ).place(relx=0.3, rely=y, anchor="center")
+        tkinter.Button(self, text="Quit",  font=("Courier New",18),
+                        bg="gray20", fg="white", command=self.quit
+                       ).place(relx=0.7, rely=y, anchor="center")
 
-    def submit():
-        pattern = "".join(str(v.get()) for v in vars)
-        if pattern == toggles._target:
-            toggles.defuse()
-            top.destroy()
+    def retry(self): os.execv(sys.executable, [sys.executable]+[sys.argv[0]])
+    def quit(self):
+        if RPi:
+            self._timer._running = False; self._timer._component.blink_rate = 0
+            self._timer._component.fill(0)
+            for p in self._button._rgb: p.value = True
+        exit(0)
 
-    Button(top, text="Submit", font=("Courier New",14),
-           command=submit).pack(pady=5)
-    top.grab_set()
+# base thread
+class PhaseThread(Thread):
+    def __init__(self, name, component=None, target=None):
+        super().__init__(daemon=True, name=name)
+        self._component = component; self._target = target
+        self._defused = False; self._failed = False; self._running = False
+    def defuse(self): self._defused, self._running = True, False
+    def fail( self): self._failed,  self._running = True, True
 
-# --- WIRES PHASE WINDOW ---
-def show_wires_window():
-    top = Toplevel(window)
-    top.title("Family Guy Wires Challenge")
-    Label(top, text=random.choice(cleveland_lines),
-          font=("Courier New",16), wraplength=300).pack(pady=10)
-    # simple UI: buttons to cut wires
-    for idx, wire in enumerate(component_wires):
-        btn = Button(top, text=f"Cut Wire {idx+1}", font=("Courier New",14),
-                     command=wire.cut)
-        btn.pack(fill="x", padx=20, pady=2)
+# Timer Logic
+class Timer(PhaseThread):
+    def __init__(self, component, initial_value, name="Timer"):
+        super().__init__(name, component)
+        self._value  = initial_value
+        self._paused = False
+        self._min = self._sec = ""
+        self._interval = 1
+    def run(self):
+        import time
+        self._running = True
+        next_t = time.time() + self._interval
+        while self._running:
+            if not self._paused and time.time() >= next_t:
+                self._value -= 1
+                self._min = f"{max(self._value,0)//60:02d}"
+                self._sec = f"{max(self._value,0)%60:02d}"
+                self._component.print(f"{self._min}:{self._sec}")
+                next_t += self._interval
+                if self._value < 0: self._running = False
+            sleep(0.05)
+    def pause(self):
+        self._paused = not self._paused
+        self._component.blink_rate = (2 if self._paused else 0)
+    def __str__(self):
+        return "DEFUSED" if self._defused else f"{self._min}:{self._sec}"
 
-    def check_cut():
-        bits = "".join("1" if w.is_cut() else "0" for w in component_wires)
-        if bits == wires._target_bits:
-            wires.defuse()
-            top.destroy()
-        else:
-            top.after(200, check_cut)
+# Keypad Logic (* to clear, # to submit)
+class Keypad(PhaseThread):
+    def __init__(self, comp, target, name="Keypad"):  # max length = target length
+        super().__init__(name, comp, target)
+        self._value = ""
+    def run(self):
+        self._running = True
+        while self._running:
+            if self._component.pressed_keys:
+                key = str(self._component.pressed_keys[0])
+                # debounce
+                while self._component.pressed_keys:
+                    sleep(0.05)
+                if key == "*":
+                    self._value = ""
+                elif key == "#":
+                    # submit
+                    if self._value == self._target:
+                        self.defuse()
+                        return
+                    else:
+                        self.fail()
+                elif len(self._value) < len(self._target):
+                    self._value += key
+            sleep(0.1)
+    def __str__(self):
+        return "DEFUSED" if self._defused else self._value
 
-    Button(top, text="Done", font=("Courier New",14),
-           command=check_cut).pack(pady=10)
-    top.grab_set()
+# Wires Logic
+# in bomb_phases.py, replace your existing Wires class with:
 
-# --- BUTTON PHASE WINDOW ---
-def show_button_window():
-    top = Toplevel(window)
-    top.title("Family Guy Button Challenge")
-    Label(top, text=random.choice(quagmire_lines + joe_lines + cleveland_lines),
-          font=("Courier New",16), wraplength=300).pack(pady=10)
+class Wires(PhaseThread):
+    def __init__(self, component, target, name="Wires"):
+        super().__init__(name, component, target)
+        # store the exact bitstring you want to see, e.g. "01101"
+        self._target_bits = target
 
-    def on_press():
-        # simulate press/release events
-        button._component.value = True
-        button._pressed = True
-        button._component.value = False
-        # evaluate target logic
-        if (button._target is None or str(button._target) in timer._sec):
-            button.defuse()
-        else:
-            button.fail()
-        top.destroy()
+    def run(self):
+        self._running = True
+        while self._running:
+            # build a current 0/1 string from your wires
+            bits = "".join(
+                "1" if (w.is_cut() if hasattr(w, "is_cut") else w.value)
+                else "0"
+                for w in self._component
+            )
+            # once the live pattern exactly matches, defuse
+            if bits == self._target_bits:
+                self.defuse()
+                return
+            sleep(0.1)
 
-    Button(top, text="Press Me", font=("Courier New",18),
-           command=on_press).pack(pady=20)
-    top.grab_set()
+    def __str__(self):
+        return "DEFUSED" if self._defused else "".join(
+            "1" if (w.is_cut() if hasattr(w, "is_cut") else w.value) else "0"
+            for w in self._component
+        )
 
-###########
-# Existing game logic
-###########
-def check_phases():
-    global strikes_left, active_phases, handled_phases
-    try: gui._ltimer  ["text"] = f"Time left: {timer}"
-    except: pass
-    try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
-    except: pass
-    try: gui._lwires  ["text"] = f"Wires phase: {wires}"
-    except: pass
-    try: gui._lbutton ["text"] = f"Button phase: {button}"
-    except: pass
-    try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
-    except: pass
-    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
-    except: pass
+# Button Logic
+# -----------------------------------------------------------------------------
+# Button phase — minimal, single‐color, press-and-release defuse logic
+# -----------------------------------------------------------------------------
+class Button(PhaseThread):
+    def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
+        """
+        state_pin:   the DigitalInOut for the pushbutton state
+        rgb_pins:    [R_pin, G_pin, B_pin] DigitalInOut outputs
+        target:      None (for red) or a digit-char for G/B
+        color:       one of "R","G","B"
+        timer:       your Timer instance (to read ._sec for G/B)
+        """
+        super().__init__(name, state_pin, target)
+        self._rgb    = rgb_pins
+        self._timer  = timer
+        self._color  = color
+        self._pressed = False
 
-    for phase in (keypad, wires, button, toggles):
-        if phase in handled_phases:
-            continue
-        if phase._failed:
-            strikes_left  -= 1
-            active_phases -= 1
-            handled_phases.add(phase)
-        elif phase._defused:
-            active_phases -= 1
-            handled_phases.add(phase)
+        # immediately light exactly that one LED
+        self._set_color(color)
 
-    if strikes_left <= 0:
-        gui.conclusion(success=False)
-    elif active_phases <= 0:
-        gui.conclusion(success=True)
-    else:
-        gui.after(100, check_phases)
+    def _set_color(self, color):
+        # False => LED on; True => LED off
+        self._rgb[0].value = (color != "R")
+        self._rgb[1].value = (color != "G")
+        self._rgb[2].value = (color != "B")
+
+    def run(self):
+        self._running = True
+        while self._running:
+            state = self._component.value   # True when pressed
+            if state and not self._pressed:
+                # you just pressed it down
+                self._pressed = True
+
+            if not state and self._pressed:
+                # you just released it → check target
+                # R (target None) always defuses on release
+                # G/B defuse only if the digit appears in the Timer’s seconds
+                if (self._target is None
+                    or str(self._target) in self._timer._sec):
+                    self.defuse()
+                else:
+                    self.fail()
+                return
+
+            sleep(0.1)
+
+    def __str__(self):
+        return "DEFUSED" if self._defused else ("Pressed" if self._component.value else "Released")
         
-def setup_phases():
-    global timer, keypad, wires, button, toggles, strikes_left, active_phases
-    strikes_left  = NUM_STRIKES
-    active_phases = NUM_PHASES
+# Toggles Logic
+class Toggles(PhaseThread):
+    def __init__(self, component, target, name="Toggles"):
+        super().__init__(name, component, target)
 
-    timer   = Timer(component_7seg, COUNTDOWN)
-    keypad  = Keypad(component_keypad, str(keypad_target))
-    wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
-    button  = Button(component_button_state, component_button_RGB,
-                     button_target, button_color, timer)
-    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+    def run(self):
+        self._running = True
+        while self._running:
+            # read the current 0/1 state of each switch
+            bits = []
+            for pin in self._component:
+                if hasattr(pin, "read"):
+                    bits.append(str(int(pin.read())))
+                else:
+                    bits.append(str(int(pin.value)))
+            current = "".join(bits)
 
-    gui.setTimer(timer)
-    gui.setButton(button)
+            # only defuse on a full match
+            if current == self._target:
+                self.defuse()
+                return
 
-    for phase in (timer, keypad, wires, button, toggles):
-        phase.start()
+            sleep(0.1)
 
-# boot sequence
-window = Tk()
- gui = Lcd(window)
- gui.after(1000, bootup)
-# schedule game start after boot scroll
-boot_duration = 1000 + len(boot_text) * 50
- gui.after(boot_duration, start_game)
+    def __str__(self):
+        if self._defused:
+            return "DEFUSED"
+        return "".join(
+            "1" if (p.read() if hasattr(p, "read") else p.value) else "0"
+            for p in self._component
+        )
 
-window.mainloop()
-
-# Updated start_game to chain puzzles
- def start_game():
-    gui.setup()
-    setup_phases()
-
-    # launch puzzles in order
-    show_keypad_window()
-    after_defuse(keypad, show_switch_window)
-    after_defuse(toggles, show_wires_window)
-    after_defuse(wires,   show_button_window)
-
-    window.after(100, check_phases)
