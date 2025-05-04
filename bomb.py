@@ -43,7 +43,7 @@ def show_image(path):
     lbl.pack(fill='both', expand=True)
 
 # Core logic: monitor phases
- def check_phases():
+def check_phases():():
      global strikes_left, active_phases
      # update LCD labels
      for attr, phase in [("_ltimer", timer), ("_lkeypad", keypad),
@@ -67,6 +67,7 @@ def show_image(path):
              strikes_left -= 1
              show_image(strike_images[min(idx, len(strike_images)-1)])
              def resume():
+    print("Resuming phase retry for index:", idx)  # Debug print added
                  global keypad, toggles, wires, button, strikes_left
                  if strikes_left > 0:
                      show_image(challenge_images[idx])
@@ -85,22 +86,25 @@ def show_image(path):
                          button = Button(component_button_state, component_button_RGB,
                                          button_target, button_color, timer)
                          button.start()
+                     window.after(100, check_phases)
                  else:
                      show_image(game_over_image)
                      gui.conclusion(success=False)
              window.after(5000, resume)
              return
          # defuse handling
-         if phase._defused:
-             handled_phases.add(phase)
-             active_phases -= 1
-             # next challenge or win
-             if idx < len(challenge_images) - 1:
-                 show_image(challenge_images[idx + 1])
-             else:
-                 show_image(win_image)
-                 gui.conclusion(success=True)
-             return
+                 # defuse
+        if phase._defused:
+            handled_phases.add(phase)
+            active_phases -= 1
+            # next challenge or win
+            if idx < len(challenge_images) - 1:
+                show_image(challenge_images[idx + 1])
+                window.after(100, check_phases)
+            else:
+                show_image(win_image)
+                gui.conclusion(success=True)
+            return
 
      # continue polling
      window.after(100, check_phases)
