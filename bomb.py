@@ -3,7 +3,7 @@
 # Main program – Day 3 GUI integration
 #################################
 from tkinter import Tk, Toplevel, Label, Entry, Button, Checkbutton, IntVar
-from bomb_configs import *        # brings in component_7seg, component_keypad, etc., plus COUNTDOWN, targets, RPi
+from bomb_configs import *        # brings in component_7seg, component_keypad, etc., plus COUNTDOWN, targets, RPi, correct_code
 from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd, and Family Guy lines
 import random
 
@@ -78,14 +78,15 @@ def show_button_window():
 # --- CORE GAME LOGIC ---
 def check_phases():
     global strikes_left, active_phases, handled_phases
-    for label, phase in (("_ltimer", timer), ("_lkeypad", keypad), ("_lwires", wires), ("_lbutton", button), ("_ltoggles", toggles), ("_lstrikes", None)):
+    for label, phase in (("_ltimer", timer), ("_lkeypad", keypad), ("_lwires", wires), ("_lbutton", button), ("_ltoggles", toggles)):
         try:
-            if phase:
-                getattr(gui, label)["text"] = f"{label[2:].replace('_',' ').title()}: {phase}"
-            else:
-                gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+            getattr(gui, label)["text"] = f"{label[2:].replace('_',' ').title()}: {phase}"
         except:
             pass
+    try:
+        gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except:
+        pass
     for phase in (keypad, wires, button, toggles):
         if phase in handled_phases: continue
         if phase._failed:
@@ -99,11 +100,13 @@ def check_phases():
     else:
         window.after(100, check_phases)
 
+# --- PHASE SETUP ---
 def setup_phases():
     global timer, keypad, wires, button, toggles, strikes_left, active_phases
-    strikes_left = NUM_STRIKES; active_phases = NUM_PHASES
+    strikes_left = NUM_STRIKES
+    active_phases = NUM_PHASES
     timer   = Timer(component_7seg, COUNTDOWN)
-    keypad  = Keypad(component_keypad, str(keypad_target))
+    keypad  = Keypad(component_keypad, correct_code)  # use correct_code from bomb_configs
     wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
     button  = Button(component_button_state, component_button_RGB, button_target, button_color, timer)
     toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
@@ -122,7 +125,8 @@ def bootup(n=0):
 
 # --- START GAME ---
 def start_game():
-    gui.setup(); setup_phases()
+    gui.setup()
+    setup_phases()
     show_keypad_window()
     after_defuse(keypad, show_switch_window)
     after_defuse(toggles, show_wires_window)
