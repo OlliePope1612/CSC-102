@@ -43,51 +43,67 @@ def show_image(path):
     lbl.pack(fill='both', expand=True)
 
 # Core logic: monitor phases
-def check_phases():
-    global strikes_left, active_phases
-    # update LCD labels
-    for attr, phase in [("_ltimer", timer), ("_lkeypad", keypad),
-                        ("_ltoggles", toggles), ("_lwires", wires), ("_lbutton", button)]:
-        try: getattr(gui, attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
-        except: pass
-    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
-    except: pass
+ def check_phases():
+     global strikes_left, active_phases
+     # update LCD labels
+     for attr, phase in [("_ltimer", timer), ("_lkeypad", keypad),
+                         ("_ltoggles", toggles), ("_lwires", wires), ("_lbutton", button)]:
+         try:
+             getattr(gui, attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
+         except:
+             pass
+     try:
+         gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+     except:
+         pass
 
-    # iterate in order
-    for idx, phase in enumerate((keypad, toggles, wires, button)):
-        if phase in handled_phases:
-            continue
-        # failure
-        if phase._failed:
-            handled_phases.add(phase)
-            strikes_left -= 1
-            show_image(strike_images[idx])
-            # after 5 seconds, either retry or game over
-            def resume():
-                if strikes_left > 0:
-                    show_image(challenge_images[idx])
-                    phase._failed = False
-                    handled_phases.discard(phase)
-                    phase.start()
-                else:
-                    show_image(game_over_image)
-                    gui.conclusion(success=False)
-            window.after(5000, resume)
-            return
-        # defuse
-        if phase._defused:
-            handled_phases.add(phase)
-            active_phases -= 1
-            # next challenge or win
-            if idx < len(challenge_images) - 1:
-                show_image(challenge_images[idx + 1])
-            else:
-                show_image(win_image)
-                gui.conclusion(success=True)
-            return
+     # iterate in order: keypad, toggles, wires, button
+     for idx, phase in enumerate((keypad, toggles, wires, button)):
+         if phase in handled_phases:
+             continue
+         # failure handling
+         if phase._failed:
+             handled_phases.add(phase)
+             strikes_left -= 1
+             show_image(strike_images[min(idx, len(strike_images)-1)])
+             def resume():
+                 global keypad, toggles, wires, button, strikes_left
+                 if strikes_left > 0:
+                     show_image(challenge_images[idx])
+                     handled_phases.discard(phase)
+                     # recreate and restart this phase thread
+                     if idx == 0:
+                         keypad = Keypad(component_keypad, "1999")
+                         keypad.start()
+                     elif idx == 1:
+                         toggles = Toggles(component_toggles, "1010")
+                         toggles.start()
+                     elif idx == 2:
+                         wires = Wires(component_wires, "10101")
+                         wires.start()
+                     elif idx == 3:
+                         button = Button(component_button_state, component_button_RGB,
+                                         button_target, button_color, timer)
+                         button.start()
+                 else:
+                     show_image(game_over_image)
+                     gui.conclusion(success=False)
+             window.after(5000, resume)
+             return
+         # defuse handling
+         if phase._defused:
+             handled_phases.add(phase)
+             active_phases -= 1
+             # next challenge or win
+             if idx < len(challenge_images) - 1:
+                 show_image(challenge_images[idx + 1])
+             else:
+                 show_image(win_image)
+                 gui.conclusion(success=True)
+             return
 
-    # keep polling
-    window.after(100, check_phases)
+     # continue polling
+     window.after(100, check_phases)
 
 # Initialize and start all phases
 def setup_phases():
