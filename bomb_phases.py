@@ -64,7 +64,7 @@ class Lcd(Frame):
             w.destroy()
             self.show_images.destroy()
         # banner
-        msg   = "DEFUSED!" if success else "💥 BOOM! 💥"
+        msg   = "DEFUSED!" if success else "BOOM!"
         color = "#00ff00" if success else "#ff0000"
         Label(self, text=msg, bg="black", fg=color,
               font=("Courier New",48,"bold")).place(relx=0.5, rely=0.3, anchor="center")
