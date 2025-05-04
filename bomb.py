@@ -7,14 +7,14 @@ import random
 # File names for images
 challenge_images = [
     "KEYPAD.jpeg",
-    "meg.jpg",
-    "meg.jpg",
+    "TOGGLES.jpg",
+    "WIRES.jpg",
     "meg.jpg",
 ]
 strike_images = [
     "STRIKE1.jpeg",
-    "STRIKE1.jpeg",
-    "STRIKE1.jpeg",
+    "STRIKE2.jpeg",
+    "STRIKE3.jpeg",
     "STRIKE1.jpeg",
 ]
 game_over_image = "peter_drunk.jpg"
