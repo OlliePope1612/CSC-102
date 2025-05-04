@@ -33,13 +33,16 @@ def show_image(path):
         pass
     img_window = Toplevel(window)
     img_window.attributes('-fullscreen', True)
+    img_window.lift()
+    img_window.focus_force()
+    img_window.config(bg='black')
     # load and resize image to screen size
     screen_w = window.winfo_screenwidth()
     screen_h = window.winfo_screenheight()
     img = Image.open(path).resize((screen_w, screen_h), Image.ANTIALIAS)
     img_photo = ImageTk.PhotoImage(img)
     lbl = Label(img_window, image=img_photo)
-    lbl.pack()
+    lbl.pack(fill='both', expand=True)
 
 # Core GUI & game logic
 handled_phases = set()
