@@ -108,9 +108,20 @@ def check_phases():
         if phase._defused:
             handled_phases.add(phase)
             active_phases -= 1
-            # next challenge or win
+        
             if i < len(challenge_images) - 1:
-                show_image(challenge_images[i + 1])
+                next_img = challenge_images[i+1]
+                show_image(next_img)
+        
+                # ○ ○ ○  NEW: force button color based on whether it's the BUTTON challenge  ○ ○ ○
+                if next_img == "BUTTON.jpeg":
+                    # red = defuse‐mode
+                    button._set_color("R")
+                else:
+                    # blue = submit‐mode for wires/toggles
+                    button._set_color("B")
+                # ○ ○ ○  end NEW  ○ ○ ○
+        
                 window.after(100, check_phases)
             else:
                 show_image(win_image)
