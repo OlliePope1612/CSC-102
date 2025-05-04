@@ -11,14 +11,11 @@ challenge_images = [
     "BUTTON.jpeg",     # button challenge
 ]
 strike_images = [
-    "STRIKE1.jpeg",
-    "STRIKE2.jpeg",
-    "STRIKE3.jpeg",
     "STRIKE4.jpeg",
+    "STRIKE3.jpeg",
+    "STRIKE2.jpeg",
+    "STRIKE1.jpeg",
 ]
-game_over_image = "FAILURE.jpeg"
-win_image       = "DEFUSED.jpeg"
-
 # Globals for image window
 img_window = None
 img_photo  = None
