@@ -12,9 +12,9 @@ challenge_images = [
 ]
 strike_images = [
     "STRIKE1.jpeg",
-    "STRIKE1.jpeg",
-    "STRIKE1.jpeg",
-    "STRIKE1.jpeg",
+    "STRIKE2.jpeg",
+    "STRIKE3.jpeg",
+    "STRIKE4.jpeg",
 ]
 game_over_image = "peter_drunk.jpg"
 win_image       = "yayyy.jpg"
@@ -84,7 +84,7 @@ def check_phases():
                         toggles = Toggles(component_toggles, "1010")
                         toggles.start()
                     elif idx == 2:
-                        wires = Wires(component_wires, "10101")
+                        wires   = Wires(component_wires, "01010")        # toggles reversed pattern
                         wires.start()
                     else:
                         button = Button(
