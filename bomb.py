@@ -73,7 +73,7 @@ def setup_phases():
     timer   = Timer(component_7seg, COUNTDOWN)
     keypad  = Keypad(component_keypad, "1999")       # hard-coded code
     toggles = Toggles(component_toggles, "1010")     # hard-coded toggles target
-    wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
+    wires   = Wires(component_wires, "10101")  # hard-coded odd-numbered wires 1,3,5[2:].zfill(len(component_wires)))
     button  = Button(component_button_state, component_button_RGB,
                      button_target, button_color, timer)
 
