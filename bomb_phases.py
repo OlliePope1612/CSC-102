@@ -18,24 +18,6 @@ import time
 # GUI class
 #########
 
-# --- Family Guy Character Commentary ---
-quagmire_lines = [
-    "Giggity! This keypad's hotter than Lois!",
-    "I'd tap that... code.",
-    "Giggity giggity goo!"
-]
-
-joe_lines = [
-    "MY WHEELCHAIR'S DEAD!",
-    "HELP! PUSH ME CLOSER!",
-    "PETER, YOU'RE OUR ONLY HOPE!"
-]
-
-cleveland_lines = [
-    "No no no no NO!",
-    "Oh, that's not good...",
-    "I'm getting outta here!"
-]
 class Lcd(Frame):
     def __init__(self, window):
         super().__init__(window, bg="black")
@@ -76,10 +58,11 @@ class Lcd(Frame):
     def setButton(self, button):self._button = button
     def pause(self):           self._timer.pause()
 
-    def conclusion(self, success=False):
+    def conclusion(self, success=True):
         # clear all
-        for w in self.winfo_children(): w.destroy()
-        self.show_images.destroy()
+        for w in self.winfo_children():
+            w.destroy()
+            self.show_images.destroy()
         # banner
         msg   = "DEFUSED!" if success else "💥 BOOM! 💥"
         color = "#00ff00" if success else "#ff0000"
@@ -133,9 +116,6 @@ class Timer(PhaseThread):
         import time
         self._running = True
         next_t = time.time() + self._interval
-        if end =< time.time():
-            strikes_left -= 5
-            self._running = False
         while self._running:
             if not self._paused and time.time() >= next_t:
                 self._value -= 1
@@ -211,29 +191,20 @@ class Wires(PhaseThread):
 
 # Button Logic
 class Button(PhaseThread):
-    def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
-        """
-        state_pin:   the DigitalInOut for the pushbutton state
-        rgb_pins:    [R_pin, G_pin, B_pin] DigitalInOut outputs
-        target:      None (for red) or a digit-char for G/B
-        color:       one of "R","G","B"
-        timer:       your Timer instance (to read ._sec for G/B)
-        """
+    def __init__(self, state_pin, rgb_pins, target, color, timer, submit_phases=(), name="Button"):
         super().__init__(name, state_pin, target)
-        self._rgb    = rgb_pins
-        self._timer  = timer
-        self._color  = color
-        self._pressed = False
-
-        # immediately light exactly that one LED
-        self._set_color(color)
+        self._rgb            = rgb_pins
+        self._timer          = timer
+        self._pressed        = False
+        self._submit_phases  = submit_phases
+        self._color = "B"
 
     def _set_color(self, color):
         self._rgb[0].value = (color != "R")
         self._rgb[1].value = (color != "G")
         self._rgb[2].value = (color != "B")
 
-        def run(self):
+    def run(self):
         self._running = True
         # light the initial color
         self._set_color(self._color)
