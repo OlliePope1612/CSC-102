@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# bomb.py
 #################################
 # CSC 102 Defuse the Bomb Project
 # Main program w/ Family Guy “icing”
