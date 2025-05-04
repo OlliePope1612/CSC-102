@@ -76,17 +76,26 @@ def check_phases():
                 show_image(win_image)
                 gui.conclusion(success=True)
             return
-        # handle failure
+                # handle failure
         if phase._failed and phase not in handled_phases:
             handled_phases.add(phase)
             strikes_left -= 1
-            # show strike image briefly
             idx = phase_index(phase)
-            strike_num = min(strikes_left, len(strike_images)-1)
+            # show strike image briefly
             show_image(strike_images[idx])
+            def restore_phase():
+                # clear the failure state and allow retry
+                phase._failed = False
+                handled_phases.discard(phase)
+                # reset input state for keypad
+                if isinstance(phase, Keypad):
+                    phase._value = ""
+                # re-display the challenge image
+                show_image(challenge_images[idx])
+                # resume phase checking
+                window.after(100, check_phases)
             if strikes_left > 0:
-                # after 5 seconds, re-show the same challenge
-                window.after(5000, lambda idx=idx: show_image(challenge_images[idx]))
+                window.after(5000, restore_phase)
             else:
                 # no strikes left -> game over
                 window.after(5000, lambda: show_image(game_over_image))
