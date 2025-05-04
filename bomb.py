@@ -98,15 +98,13 @@ def setup_phases():
 def update_gui():
     global strikes_left, active_phases
 
-    # 1) Refresh LCD labels
-    gui._ltimer["text" ] = f"Time left: {timer}"
-    gui._lkeypad["text"] = f"Keypad: {keypad}"
-    gui._lwires["text" ] = f"Wires: {wires}"
-    gui._ltoggles["text"] = f"Toggles: {toggles}"
-    gui._lbutton["text"] = f"Button: {button}"
-    gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    gui.labels['Time']['text']    = f"Time left: {timer}"
+    gui.labels['Keypad']['text']  = f"Keypad: {keypad}"
+    gui.labels['Wires']['text']   = f"Wires: {wires}"
+    gui.labels['Toggles']['text'] = f"Toggles: {toggles}"
+    gui.labels['Button']['text']  = f"Button: {button}"
+    gui.labels['Strikes']['text'] = f"Strikes left: {strikes_left}"
 
-    # 2) Check each puzzle phase in order
     phases = [keypad, wires, toggles, button]
     for idx, ph in enumerate(phases):
         if ph in handled_phases:
