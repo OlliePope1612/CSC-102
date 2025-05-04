@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# bomb.py
 #################################
 # CSC 102 Defuse the Bomb Project
 # Main program w/ Family Guy “icing”
@@ -32,7 +30,9 @@ def show_image(path, hold_ms=1500):
     img = Image.open(path).resize((w, h), Image.LANCZOS)
     _img_photo = ImageTk.PhotoImage(img)
     Label(_img_window, image=_img_photo).pack(fill='both', expand=True)
-    root.after(hold_ms, _img_window.destroy)
+    
+    if hold_ms is not None:
+        root.after(hold_ms, _img_window.destroy)
 
 # —————————————————————————————————————————————
 # Challenge & strike images (in phase order)
@@ -71,14 +71,13 @@ def setup_phases():
 
     # instantiate your phase threads
     timer   = Timer(component_7seg, COUNTDOWN)
-    keypad  = Keypad(component_keypad, str(keypad_target))
-    wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
-    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+    keypad  = Keypad(component_keypad, keypad_target)
+    wires   = Wires(component_wires, wires_target)
+    toggles = Toggles(component_toggles, toggles_target)
     button  = Button(
         component_button_state,
         component_button_rgb,
-        button_target, button_color, timer,
-        submit_phases=(wires, toggles)
+        button_target, button_color, timer
     )
 
     # connect them to the LCD GUI
@@ -106,7 +105,7 @@ def update_gui():
     gui.labels['Strikes']['text'] = f"Strikes left: {strikes_left}"
 
     phases = [keypad, wires, toggles, button]
-    for idx, ph in enumerate(phases):
+    for x, ph in enumerate(phases):
         if ph in handled_phases:
             continue
 
@@ -118,13 +117,13 @@ def update_gui():
             # retry just that phase
             def retry_phase():
                 handled_phases.discard(ph)
-                if idx == 0:
+                if x == 0:
                     globals()['keypad'] = Keypad(component_keypad, str(keypad_target))
                     keypad.start()
-                elif idx == 1:
+                elif x == 1:
                     globals()['wires'] = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
                     wires.start()
-                elif idx == 2:
+                elif x == 2:
                     globals()['toggles'] = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
                     toggles.start()
                 else:
@@ -144,9 +143,9 @@ def update_gui():
             # phase defused → move on
             handled_phases.add(ph)
             active_phases -= 1
-            next_idx = idx + 1
-            if next_idx < len(challenge_images):
-                show_image(challenge_images[next_idx])
+            next_x = x + 1
+            if next_x < len(challenge_images):
+                show_image(challenge_images[next_x])
                 root.after(500, update_gui)
             else:
                 # all done!
