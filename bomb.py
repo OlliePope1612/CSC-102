@@ -97,44 +97,47 @@ def check_phases():
         # failure handling
         if phase._failed:
             handled_phases.add(phase)
-            # decrement strikes and choose strike image based on count
             strikes_left -= 1
-            strike_count = NUM_STRIKES - strikes_left  # e.g. 1 for first strike
+            strike_count = NUM_STRIKES - strikes_left
             img_i = min(strike_count - 1, len(strike_images) - 1)
             show_image(strike_images[img_i])
 
             def resume():
-                global strikes_left, handled_phases, keypad, toggles, wires, button
-                if strikes_left > 0:
-                    # retry same challenge
-                    show_image(challenge_images[i])
-                    handled_phases.discard(phase)
-                    # recreate and restart thread
-                    if i == 0:
-                        keypad = Keypad(component_keypad, "1999")
-                        keypad.start()
-                    elif i == 1:
-                        toggles = Toggles(component_toggles, "1010")
-                        toggles.start()
-                    elif i == 2:
-                        wires = Wires(component_wires, "01010")
-                        wires.start()
-                    else:
-                        button = Button(
-                            component_button_state,
-                            component_button_RGB,
-                            button_target, button_color, timer
-                        )
-                        button.start()
-                    window.after(100, check_phases)
+                global keypad, toggles, wires, button, handled_phases
+                handled_phases.discard(phase)
+
+                # re-start only the phase that failed
+                if i == 0:
+                    keypad = Keypad(component_keypad, str(keypad_target))
+                    keypad.start()
+                elif i == 1:
+                    toggles = Toggles(
+                        component_toggles,
+                        bin(toggles_target)[2:].zfill(len(component_toggles))
+                    )
+                    toggles.start()
+                elif i == 2:
+                    wires = Wires(
+                        component_wires,
+                        bin(wires_target)[2:].zfill(len(component_wires))
+                    )
+                    wires.start()
                 else:
-                    show_image(game_over_image)
-                    gui.conclusion(success=False)
+                    button = Button(
+                        component_button_state,
+                        component_button_RGB,
+                        button_target, button_color, timer,
+                        submit_phases=(toggles, wires)
+                    )
+                    button.start()
+
+                # bring back the same challenge image
+                show_image(challenge_images[i])
+                window.after(100, check_phases)
 
             window.after(5000, resume)
             return
-            return
-
+            
         # defuse handling
         if phase._defused:
             handled_phases.add(phase)
@@ -144,14 +147,12 @@ def check_phases():
                 next_img = challenge_images[i+1]
                 show_image(next_img)
         
-                # ○ ○ ○  NEW: force button color based on whether it's the BUTTON challenge  ○ ○ ○
                 if next_img == "BUTTON.jpeg":
                     # red = defuse‐mode
                     button._set_color("R")
                 else:
                     # blue = submit‐mode for wires/toggles
                     button._set_color("B")
-                # ○ ○ ○  end NEW  ○ ○ ○
         
                 window.after(100, check_phases)
             else:
