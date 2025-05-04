@@ -7,8 +7,8 @@ import random
 # File names for images
 challenge_images = [
     "KEYPAD.jpeg",
-    "TOGGLES.jpeg",
-    "WIRES.jpeg",
+    "meg.jpg",
+    "meg.jpg",
     "meg.jpg",
 ]
 strike_images = [
@@ -44,45 +44,51 @@ def show_image(path):
     lbl = Label(img_window, image=img_photo)
     lbl.pack(fill='both', expand=True)
 
-# Interactive toggles window using GUI checkboxes
-def show_switch_window():
-    top = Toplevel(window)
-    top.attributes('-fullscreen', True)
-    top.lift()
-    top.focus_force()
-    top.config(bg='black')
-    # show background image
-    screen_w = window.winfo_screenwidth()
-    screen_h = window.winfo_screenheight()
-    img = Image.open(challenge_images[1]).resize((screen_w, screen_h), Image.LANCZOS)
-    photo = ImageTk.PhotoImage(img)
-    bg = Label(top, image=photo)
-    bg.image = photo
-    bg.pack(fill='both', expand=True)
-    # overlay checkboxes
-    from tkinter import Frame, IntVar, Checkbutton, Button
-    frame = Frame(top, bg='black')
-    frame.place(relx=0.5, rely=0.5, anchor='center')
-    vars = []
-    for i in range(len(toggles._target)):
-        v = IntVar(value=0)
-        cb = Checkbutton(frame, text=f"Switch {i+1}", variable=v,
-                        font=("Courier New",18), fg="white", bg="black",
-                        selectcolor="black")
-        cb.pack(anchor='w')
-        vars.append(v)
-    def on_submit():
-        pattern = "".join(str(v.get()) for v in vars)
-        if pattern == toggles._target:
-            toggles.defuse()
-            top.destroy()
-    btn = Button(frame, text="Submit", font=("Courier New",18),
-                 command=on_submit)
-    btn.pack(pady=10)
-
 # Core GUI & game logic
+handled_phases = set()
+
+# Track phase threads
+timer = None
+keypad = None
+toggles = None
+wires = None
+button = None
+
+# Boot sequence
+def bootup(n=0):
+    if not ANIMATE or n >= len(boot_text):
+        gui.setup()
+    else:
+        if boot_text[n] != "\x00":
+            gui._lscroll["text"] += boot_text[n]
+        delay = 25 if boot_text[n] != "\x00" else 750
+        gui.after(delay, bootup, n+1)
+
+# Initialize and start all phases at once
+def setup_phases():
+    global timer, keypad, toggles, wires, button, strikes_left, active_phases
+    strikes_left  = NUM_STRIKES
+    active_phases = NUM_PHASES
+
+    timer   = Timer(component_7seg, COUNTDOWN)
+    keypad  = Keypad(component_keypad, "1999")       # hard-coded code
+    toggles = Toggles(component_toggles, "1010")     # hard-coded toggles target
+    wires   = Wires(component_wires, "10101")  # hard-coded odd-numbered wires 1,3,5[2:].zfill(len(component_wires)))
+    button  = Button(component_button_state, component_button_RGB,
+                     button_target, button_color, timer)
+
+    gui.setTimer(timer)
+    gui.setButton(button)
+
+    # start all threads
+    for phase in (timer, keypad, toggles, wires, button):
+        phase.start()
+
+    # show first challenge image
+    show_image(challenge_images[0])
+
+# Poll phases for defuse/fail and advance
 def check_phases():
-():
     global strikes_left, active_phases
     # Update underlying labels (optional)
     try: gui._ltimer["text"]   = f"Time left: {timer}"
