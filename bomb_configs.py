@@ -1,5 +1,6 @@
 import random
 
+# detect real Pi vs mock
 try:
     import board, busio, digitalio
     from adafruit_ht16k33.segments import Seg7x4
@@ -8,12 +9,17 @@ try:
 except ImportError:
     RPi = False
 
-# Gameplay constants
-COUNTDOWN    = 120    # seconds
-NUM_STRIKES  = 3
-NUM_PHASES   = 4
+# runtime flags
+DEBUG        = not RPi
+ANIMATE      = True
+SHOW_BUTTONS = not RPi
 
-# Hardware components (real or mock)
+# gameplay constants
+COUNTDOWN   = 120    # seconds
+NUM_STRIKES = 3
+NUM_PHASES  = 4
+
+# hardware components (real or mock)
 if RPi:
     # 7-segment display
     i2c = busio.I2C(board.SCL, board.SDA)
@@ -32,12 +38,12 @@ if RPi:
         p.direction = digitalio.Direction.INPUT
         p.pull      = digitalio.Pull.DOWN
 
-    # pushbutton state + RGB LED
+    # pushbutton (state + RGB)
     component_button_state = digitalio.DigitalInOut(board.D4)
     component_button_state.direction = digitalio.Direction.INPUT
     component_button_state.pull      = digitalio.Pull.DOWN
-    component_button_rgb = [digitalio.DigitalInOut(pin) for pin in (board.D17, board.D27, board.D22)]
-    for p in component_button_rgb:
+    component_button_RGB   = [digitalio.DigitalInOut(pin) for pin in (board.D17, board.D27, board.D22)]
+    for p in component_button_RGB:
         p.direction = digitalio.Direction.OUTPUT
         p.value     = True
 
@@ -48,7 +54,7 @@ if RPi:
         p.pull      = digitalio.Pull.DOWN
 
 else:
-    # Mock classes for macOS testing
+    # mock hardware for macOS
     class Mock7Seg:
         def __init__(self): self.blink_rate = 0
         def print(self, s): pass
@@ -70,11 +76,14 @@ else:
     component_keypad       = MockKeypad()
     component_wires        = [MockWire(i) for i in range(5)]
     component_button_state = MockPin()
-    component_button_rgb   = [MockPin() for _ in range(3)]
+    component_button_RGB   = [MockPin() for _ in range(3)]
     component_toggles      = [MockPin() for _ in range(4)]
 
-# **STATIC** targets for now (replace with genSerial/genKeypad for randomness)
+# **STATIC** puzzle targets (you can later swap these out for genSerial/genKeypad)
 toggles_target = '1010'
 wires_target   = '11001'
 keypad_target  = '1234'
-button_target  = None   # if None, button‐puzzle is “release on a correct timer digit”
+button_target  = None   # None = “release on correct timer digit” mode
+
+# initial button-LED color
+button_color = 'B'       # 'B'=blue (submit), 'R'=red (defuse), 'G'=green
