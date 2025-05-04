@@ -1,7 +1,3 @@
-#################################
-# CSC 102 Defuse the Bomb Project
-# Main program – Day 3 GUI integration
-#################################
 from tkinter import Tk, Toplevel, Label, Entry, Button, Checkbutton, IntVar
 from bomb_configs import *        # brings in component_7seg, component_keypad, etc., plus COUNTDOWN, targets, RPi, correct_code
 from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd, and Family Guy lines
@@ -140,6 +136,3 @@ gui.after(1000, bootup)
 boot_duration = 1000 + len(boot_text) * 50
 gui.after(boot_duration, start_game)
 window.mainloop()
-
-
-
