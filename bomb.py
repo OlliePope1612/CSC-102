@@ -1,162 +1,112 @@
-from tkinter import Tk, Toplevel, Label, Entry, Button, Checkbutton, IntVar
-from bomb_configs import *        # brings in component_7seg, component_keypad, COUNTDOWN, correct_code, etc.
-from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd, plus Family Guy lines
+from tkinter import Tk, Toplevel, Label
+from PIL import Image, ImageTk
+from bomb_configs import *        # component_7seg, component_keypad, COUNTDOWN, keypad_target, etc.
+from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd  # import only needed classes
 import random
 
-# Helper to chain windows once a phase is defused
-def after_defuse(phase, callback):
-    if phase._defused:
-        callback()
-    else:
-        window.after(100, after_defuse, phase, callback)
+# File names for images (place these in your working directory)
+challenge_images = [
+    "KEYPAD.jpeg",  # for keypad
+    "meg.jpg",  # for toggles
+    "meg.jpg",  # for wires
+    "meg.jpg",  # for button
+]
+strike_images = [
+    "STRIKE1.jpeg",
+    "STRIKE1.jpeg",
+    "STRIKE1.jpeg",
+    "STRIKE1.jpeg",
+]
+game_over_image = "peter_drunk.jpg"
+win_image       = "yayyy.jpg"
 
-# --- KEYPAD PHASE WINDOW ---
-def show_keypad_window():
-    top = Toplevel(window)
-    top.title("Family Guy Keypad Challenge")
-    Label(top, text=random.choice(quagmire_lines),
-          font=("Courier New",16), wraplength=300).pack(pady=10)
-    entry = Entry(top, font=("Courier New",18), justify="center")
-    entry.pack(pady=10)
-    Button(top, text="Submit", font=("Courier New",14),
-           command=lambda: on_keypad_submit(entry, top)).pack(pady=5)
-    top.grab_set()
+# Globals for image window
+img_window = None
+img_photo = None
 
-def on_keypad_submit(entry, top):
-    if entry.get() == correct_code:    # use correct_code from bomb_configs
-        keypad.defuse()
-        top.destroy()
+# Display a fullscreen image in its own window
+def show_image(path):
+    global img_window, img_photo
+    try:
+        img_window.destroy()
+    except:
+        pass
+    img_window = Toplevel(window)
+    img_window.attributes('-fullscreen', True)
+    # load and resize image to screen size
+    screen_w = window.winfo_screenwidth()
+    screen_h = window.winfo_screenheight()
+    img = Image.open(path).resize((screen_w, screen_h), Image.ANTIALIAS)
+    img_photo = ImageTk.PhotoImage(img)
+    lbl = Label(img_window, image=img_photo)
+    lbl.pack()
 
-# --- TOGGLES (SWITCHES) PHASE WINDOW ---
-def show_switch_window():
-    top = Toplevel(window)
-    top.title("Family Guy Switch Challenge")
-    Label(top, text=random.choice(joe_lines),
-          font=("Courier New",16), wraplength=300).pack(pady=10)
+# Core GUI & game logic
+handled_phases = set()
 
-    vars = []
-    for i in range(len(toggles._target)):
-        v = IntVar(value=0)
-        Checkbutton(top, text=f"Switch {i+1}", variable=v,
-                    font=("Courier New",14)).pack(anchor="w")
-        vars.append(v)
-
-    def submit():
-        pattern = "".join(str(v.get()) for v in vars)
-        if pattern == toggles._target:
-            toggles.defuse()
-            top.destroy()
-
-    Button(top, text="Submit", font=("Courier New",14),
-           command=submit).pack(pady=5)
-    top.grab_set()
-
-# --- WIRES PHASE WINDOW ---
-def show_wires_window():
-    top = Toplevel(window)
-    top.title("Family Guy Wires Challenge")
-    Label(top, text=random.choice(cleveland_lines),
-          font=("Courier New",16), wraplength=300).pack(pady=10)
-
-    for idx, wire in enumerate(component_wires):
-        Button(top, text=f"Cut Wire {idx+1}", font=("Courier New",14),
-               command=wire.cut).pack(fill="x", padx=20, pady=2)
-
-    def check_cut():
-        bits = "".join("1" if w.is_cut() else "0"
-                       for w in component_wires)
-        if bits == wires._target_bits:
-            wires.defuse()
-            top.destroy()
-        else:
-            top.after(200, check_cut)
-
-    Button(top, text="Done", font=("Courier New",14),
-           command=check_cut).pack(pady=10)
-    top.grab_set()
-
-# --- BUTTON PHASE WINDOW ---
-def show_button_window():
-    top = Toplevel(window)
-    top.title("Family Guy Button Challenge")
-    Label(top, text=random.choice(quagmire_lines + joe_lines + cleveland_lines),
-          font=("Courier New",16), wraplength=300).pack(pady=10)
-
-    def on_press():
-        # simulate press/release
-        button._component.value = True
-        button._pressed = True
-        button._component.value = False
-
-        # defuse logic
-        if button._target is None or str(button._target) in timer._sec:
-            button.defuse()
-        else:
-            button.fail()
-        top.destroy()
-
-    Button(top, text="Press Me", font=("Courier New",18),
-           command=on_press).pack(pady=20)
-    top.grab_set()
-
-# --- CORE GAME LOGIC ---
 def check_phases():
     global strikes_left, active_phases, handled_phases
-
-    # update labels
+    # update underlying LCD labels (optional)
     try: gui._ltimer["text"]   = f"Time left: {timer}"
     except: pass
-    try: gui._lkeypad["text"]  = f"Keypad phase: {keypad}"
+    try: gui._lkeypad["text"]  = f"Keypad: {keypad}"
     except: pass
-    try: gui._lwires["text"]   = f"Wires phase: {wires}"
+    try: gui._ltoggles["text"] = f"Toggles: {toggles}"
     except: pass
-    try: gui._lbutton["text"]  = f"Button phase: {button}"
+    try: gui._lwires["text"]   = f"Wires: {wires}"
     except: pass
-    try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
+    try: gui._lbutton["text"]  = f"Button: {button}"
     except: pass
     try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
     except: pass
 
-    # handle defuses/fails
-    for phase in (keypad, wires, button, toggles):
+    for phase in (keypad, toggles, wires, button):
         if phase in handled_phases:
             continue
+        # failure
         if phase._failed:
             strikes_left -= 1
             active_phases -= 1
             handled_phases.add(phase)
-        elif phase._defused:
+            strike_num = len(strike_images) - strikes_left
+            if strikes_left > 0 and strike_num <= len(strike_images):
+                show_image(strike_images[strike_num-1])
+            else:
+                show_image(game_over_image)
+            gui.conclusion(success=False)
+            return
+        # defuse
+        if phase._defused:
             active_phases -= 1
             handled_phases.add(phase)
+            idx = [keypad, toggles, wires, button].index(phase)
+            if idx < len(challenge_images)-1:
+                show_image(challenge_images[idx+1])
+            else:
+                show_image(win_image)
+                gui.conclusion(success=True)
+                return
 
-    # check end conditions
-    if strikes_left <= 0:
-        gui.conclusion(success=False)
-    elif active_phases <= 0:
-        gui.conclusion(success=True)
-    else:
-        window.after(100, check_phases)
+    # continue polling
+    window.after(100, check_phases)
 
-# --- INITIALIZE PHASE THREADS ---
+# Initialize phase threads
 def setup_phases():
-    global timer, keypad, wires, button, toggles, strikes_left, active_phases
+    global timer, keypad, toggles, wires, button, strikes_left, active_phases
     strikes_left  = NUM_STRIKES
     active_phases = NUM_PHASES
-
     timer   = Timer(component_7seg, COUNTDOWN)
-    keypad  = Keypad(component_keypad, correct_code)
+    keypad  = Keypad(component_keypad, "1999")  # hard-coded keypad code
+    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
     wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
     button  = Button(component_button_state, component_button_RGB,
                      button_target, button_color, timer)
-    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
-
     gui.setTimer(timer)
     gui.setButton(button)
+    for p in (timer, keypad, toggles, wires, button):
+        p.start()
 
-    for phase in (timer, keypad, wires, button, toggles):
-        phase.start()
-
-# --- BOOTUP SEQUENCE ---
+# Boot sequence (as before)
 def bootup(n=0):
     if not ANIMATE or n >= len(boot_text):
         gui.setup()
@@ -166,22 +116,17 @@ def bootup(n=0):
         delay = 25 if boot_text[n] != "\x00" else 750
         gui.after(delay, bootup, n+1)
 
-# --- START GAME (chained windows) ---
+# Start game: show first challenge image and begin polling
 def start_game():
     gui.setup()
     setup_phases()
-
-    show_keypad_window()
-    after_defuse(keypad,     show_switch_window)
-    after_defuse(toggles,    show_wires_window)
-    after_defuse(wires,      show_button_window)
-
+    show_image(challenge_images[0])
     window.after(100, check_phases)
 
-# --- MAIN ---
+# MAIN
 window = Tk()
 gui = Lcd(window)
 gui.after(1000, bootup)
-boot_duration = 1000 + len(boot_text) * 50
+boot_duration = 1000 + len(boot_text)*50
 gui.after(boot_duration, start_game)
 window.mainloop()
