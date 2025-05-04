@@ -6,9 +6,9 @@ from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd
 # File names for images
 challenge_images = [
     "KEYPAD.jpeg",  # keypad challenge
-    "meg.jpg",     # toggles challenge
-    "meg.jpg",     # wires challenge
-    "meg.jpg",     # button challenge
+    "TOGGLES.jpeg",     # toggles challenge
+    "WIRES.jpeg",     # wires challenge
+    "BUTTON.jpeg",     # button challenge
 ]
 strike_images = [
     "STRIKE1.jpeg",
@@ -16,8 +16,8 @@ strike_images = [
     "STRIKE3.jpeg",
     "STRIKE4.jpeg",
 ]
-game_over_image = "peter_drunk.jpg"
-win_image       = "yayyy.jpg"
+game_over_image = "DEFUSED.jpeg"
+win_image       = "FAILURE.jpeg"
 
 # Globals for image window
 img_window = None
