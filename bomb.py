@@ -47,43 +47,112 @@ def show_image(path):
     lbl.pack(fill='both', expand=True)
 
 def check_phases():
-    global timer, keypad, wires, button, toggles, strikes_left, active_phases
-
-    # While there are still phases to defuse and you haven’t exploded…
-    while active_phases > 0 and strikes_left > 0:
-        # 1) Refresh every label (wrapped in try/except so we don’t crash
-        #    if that widget has already been destroyed by conclusion())
-        try: gui._ltimer[  "text"] = f"Time left: {timer}"
-        except: pass
-        try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
-        except: pass
-        try: gui._lwires[  "text"] = f"Wires phase: {wires}"
-        except: pass
-        try: gui._lbutton["text"] = f"Button phase: {button}"
-        except: pass
-        try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
-        except: pass
-        try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
-        except: pass
-
-        # 2) Look at each non-timer phase:
-        for phase in (keypad, wires, button, toggles):
-            if phase._failed:
-                # somebody got it wrong → lose a strike
-                strikes_left  -= 1
-                active_phases -= 1
-                phase._failed  = False
-            elif phase._defused:
-                # that phase is done for good
-                active_phases -= 1
-                # (we leave phase._defused True so the label stays “DEFUSED”)
-
-        # 3) Give control back to Tk so the GUI remains responsive
-        gui.update()
-        gui.after(100)   # schedule next check in 100 ms
-        return           # IMPORTANT! return here so the loop is driven by after()
-
-    # 4) Once you exit the loop, show your final banner
+     global strikes_left, active_phases, handled_phases, keypad, toggles, wires, button
+     # update LCD labels
+     for attr, phase in [
+         ("_ltimer", timer), ("_lkeypad", keypad),
+         ("_ltoggles", toggles), ("_lwires", wires), ("_lbutton", button)
+     ]:
+         try:
+             getattr(gui, attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
+         except:
+             pass
+     try:
+         gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+     except:
+         pass
+ 
+     # iterate in order: keypad(0), toggles(1), wires(2), button(3)
+     for i, phase in enumerate((keypad, toggles, wires, button)):
+         if phase in handled_phases:
+             continue
+         # failure handling
+         if phase._failed:
+             handled_phases.add(phase)
+             strikes_left -= 1
+             strike_count = NUM_STRIKES - strikes_left
+             img_i = min(strike_count - 1, len(strike_images) - 1)
+             show_image(strike_images[img_i])
+ 
+             def resume():
+                 global strikes_left, handled_phases, keypad, toggles, wires, button
+                 if strikes_left > 0:
+                     # retry same challenge
+                     show_image(challenge_images[i])
+                     handled_phases.discard(phase)
+                     # recreate and restart the specific phase
+                     if i == 0:
+                         keypad = Keypad(component_keypad, str(keypad_target))
+                         keypad.start()
+                     elif i == 1:
+                         toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+                         toggles.start()
+                     elif i == 2:
+                         wires = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
+                         wires.start()
+                     else:
+                         button = Button(
+                             component_button_state,
+                             component_button_RGB,
+                             button_target, button_color, timer,
+                             submit_phases=(toggles, wires)
+                         )
+                         button.start()
+                     # **IMPORTANT** update button's submit list to point at new phases
+                     button._submit_phases = (toggles, wires)
+                     window.after(100, check_phases)
+                 else:
+                     show_image(game_over_image)
+                     gui.conclusion(success=False)
+             window.after(5000, resume)
+             return
+ 
+         # defuse handling
+         if phase._defused:
+             handled_phases.add(phase)
+             active_phases -= 1
+             if i < len(challenge_images) - 1:
+                 show_image(challenge_images[i + 1])
+                 window.after(100, check_phases)
+             else:
+                 show_image(win_image)
+                 gui.conclusion(success=True)
+             return
+ 
+         if not timer._running:
+             gui.conclusion(success=False)
+             return
+ 
+     window.after(100, check_phases)
+ 
+     while active_phases > 0 and strikes_left > 0:
+         # 1) Refresh every label (wrapped in try/except so we don’t crash
+         #    if that widget has already been destroyed by conclusion())
+         try: gui._ltimer[  "text"] = f"Time left: {timer}"
+         except: pass
+         try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
+         except: pass
+         try: gui._lwires[  "text"] = f"Wires phase: {wires}"
+         except: pass
+         try: gui._lbutton["text"] = f"Button phase: {button}"
+         except: pass
+         try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
+         except: pass
+         try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+         except: pass
+ 
+         for phase in (keypad, wires, button, toggles):
+             if phase._failed:
+                 # somebody got it wrong → lose a strike
+                 strikes_left  -= 1
+                 active_phases -= 1
+                 phase._failed  = False
+             elif phase._defused:
+                 active_phases -= 1 
+         gui.update()
+         gui.after(100) 
+         return 
+ 
     gui.conclusion(success=(active_phases == 0))
 
 # Initialize and start all phases
