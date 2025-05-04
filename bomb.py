@@ -98,52 +98,70 @@ def setup_phases():
 def update_gui():
     global strikes_left, active_phases
 
-    # … your label updates …
+    gui.labels['Time']['text']    = f"Time left: {timer}"
+    gui.labels['Keypad']['text']  = f"Keypad: {keypad}"
+    gui.labels['Wires']['text']   = f"Wires: {wires}"
+    gui.labels['Toggles']['text'] = f"Toggles: {toggles}"
+    gui.labels['Button']['text']  = f"Button: {button}"
+    gui.labels['Strikes']['text'] = f"Strikes left: {strikes_left}"
 
     phases = [keypad, wires, toggles, button]
     for x, ph in enumerate(phases):
+        def retry_phase():
+            handled_phases.discard(ph)
+            if x == 0:
+                globals()['keypad'] = Keypad(component_keypad, str(keypad_target))
+                keypad.start()
+            elif x == 1:
+                globals()['wires'] = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
+                wires.start()
+            elif x == 2:
+                globals()['toggles'] = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+                toggles.start()
+            else:
+                globals()['button'] = Button(
+                    component_button_state,
+                    component_button_rgb,
+                    button_target, button_color, timer
+                )
+                button.start()
+            root.after(500, update_gui)
+
+            root.after(1500, retry_phase)
+            return
+        
         if ph in handled_phases:
             continue
 
         if ph._failed:
+            # strike!
             handled_phases.add(ph)
             strikes_left -= 1
-            # show strike image for 3s
-            show_image(strike_images[min(strikes_left, len(strike_images)-1)], hold_ms=3000)
-
-            # capture the current phase and index in defaults:
-            def retry_phase(failed_phase=ph, idx=x):
-                handled_phases.discard(failed_phase)
-                # re-create exactly that one phase
-                if idx == 0:
-                    new = Keypad(component_keypad, keypad_target)
-                    globals()['keypad'] = new
-                elif idx == 1:
-                    new = Wires(component_wires, wires_target)
-                    globals()['wires'] = new
-                elif idx == 2:
-                    new = Toggles(component_toggles, toggles_target)
-                    globals()['toggles'] = new
-                else:
-                    new = Button(component_button_state,
-                                 component_button_rgb,
-                                 button_target, button_color, timer)
-                    globals()['button'] = new
-                new.start()
-                # immediately resume polling
-                update_gui()
-
-            # schedule retry _after_ the strike splash
-            root.after(3000, retry_phase)
-            return
+            show_image(strike_images[strikes_left-1], 3000)
+            retry_phase()
+            
 
         if ph._defused:
+            # phase defused → move on
             handled_phases.add(ph)
             active_phases -= 1
-            # … advance to next challenge …
+            next_x = x + 1
+            if next_x < len(challenge_images):
+                show_image(challenge_images[next_x])
+                root.after(500, update_gui)
+            else:
+                # all done!
+                timer.pause()
+                gui.conclusion(success=True)
             return
 
-    # … rest of update_gui …
+    # 3) Timer expired?
+    if not timer._running:
+        gui.conclusion(success=False)
+        return
+
+    # 4) Otherwise keep polling
+    root.after(100, update_gui)
 
 # —————————————————————————————————————————————
 # MAIN
