@@ -36,7 +36,6 @@ cleveland_lines = [
     "Oh, that's not good...",
     "I'm getting outta here!"
 ]
-
 class Lcd(Frame):
     def __init__(self, window):
         super().__init__(window, bg="black")
@@ -118,8 +117,7 @@ class PhaseThread(Thread):
         self._component = component; self._target = target
         self._defused = False; self._failed = False; self._running = False
     def defuse(self): self._defused, self._running = True, False
-    def fail(self): self._failed,  self._running = True, False
-    def incorrect(self): self._failed, self._running = True, True
+    def fail( self): self._failed,  self._running = True, True
 
 # Timer Logic
 class Timer(PhaseThread):
@@ -169,7 +167,7 @@ class Keypad(PhaseThread):
                         self.defuse()
                         return
                     else:
-                        self.incorrect()
+                        self.fail()
                 elif len(self._value) < len(self._target):
                     self._value += key
             sleep(0.1)
@@ -211,20 +209,84 @@ class Wires(PhaseThread):
 # Button phase — minimal, single‐color, press-and-release defuse logic
 # -----------------------------------------------------------------------------
 class Button(PhaseThread):
-    #colors = ["R", "G", "B"]
     def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
+        """
+        state_pin:   the DigitalInOut for the pushbutton state
+        rgb_pins:    [R_pin, G_pin, B_pin] DigitalInOut outputs
+        target:      None (for red) or a digit-char for G/B
+        color:       one of "R","G","B"
+        timer:       your Timer instance (to read ._sec for G/B)
+        """
         super().__init__(name, state_pin, target)
         self._rgb    = rgb_pins
         self._timer  = timer
+        self._color  = color
         self._pressed = False
 
-        # set up the color cycle
-        #self._color_index = Button.colors.index(initial_color)
-        #self._last_cycle  = time.time()
-        #self._cycle_period = 10.0
-        # light the starting color
-        #self._set_color(initial_color)
+        # immediately light exactly that one LED
+        self._set_color(color)
+
     def _set_color(self, color):
+        # False => LED on; True => LED off
         self._rgb[0].value = (color != "R")
-        self
+        self._rgb[1].value = (color != "G")
+        self._rgb[2].value = (color != "B")
+
+    def run(self):
+        self._running = True
+        while self._running:
+            state = self._component.value   # True when pressed
+            if state and not self._pressed:
+                # you just pressed it down
+                self._pressed = True
+
+            if not state and self._pressed:
+                # you just released it → check target
+                # R (target None) always defuses on release
+                # G/B defuse only if the digit appears in the Timer’s seconds
+                if (self._target is None
+                    or str(self._target) in self._timer._sec):
+                    self.defuse()
+                else:
+                    self.fail()
+                return
+
+            sleep(0.1)
+
+    def __str__(self):
+        return "DEFUSED" if self._defused else ("Pressed" if self._component.value else "Released")
+        
+# Toggles Logic
+class Toggles(PhaseThread):
+    def __init__(self, component, target, name="Toggles"):
+        super().__init__(name, component, target)
+
+    def run(self):
+        self._running = True
+        while self._running:
+            # read the current 0/1 state of each switch
+            bits = []
+            for pin in self._component:
+                if hasattr(pin, "read"):
+                    bits.append(str(int(pin.read())))
+                else:
+                    bits.append(str(int(pin.value)))
+            current = "".join(bits)
+
+            # only defuse on a full match
+            if current == self._target:
+                self.defuse()
+                return
+
+            sleep(0.1)
+
+    def __str__(self):
+        if self._defused:
+            return "DEFUSED"
+        return "".join(
+            "1" if (p.read() if hasattr(p, "read") else p.value) else "0"
+            for p in self._component
+        )
+
+
 
