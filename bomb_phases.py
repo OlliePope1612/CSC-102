@@ -127,10 +127,14 @@ class Timer(PhaseThread):
         self._paused = False
         self._min = self._sec = ""
         self._interval = 1
+        end = time.time() + COUNTDOWN
     def run(self):
         import time
         self._running = True
         next_t = time.time() + self._interval
+        if end =< time.time():
+            strikes_left -= 5
+            self._running = False
         while self._running:
             if not self._paused and time.time() >= next_t:
                 self._value -= 1
