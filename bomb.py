@@ -16,6 +16,44 @@ from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd
 img_window = None
 img_photo  = None
 
+def check_phases():
+    global strikes_left, active_phases
+    # sanity check
+    assert None not in (keypad, toggles, wires, button), \
+           "You must call setup_phases() before check_phases()!"
+
+    # refresh labels once
+    try: gui._ltimer["text"]   = f"Time left: {timer}"
+    except: pass
+    try: gui._lkeypad["text"]  = f"Keypad phase: {keypad}"
+    except: pass
+    try: gui._lwires["text"]   = f"Wires phase: {wires}"
+    except: pass
+    try: gui._lbutton["text"]  = f"Button phase: {button}"
+    except: pass
+    try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
+    except: pass
+    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except: pass
+
+    # handle failures/defuses
+    for phase in (keypad, toggles, wires, button):
+        if phase._failed:
+            strikes_left  -= 1
+            active_phases -= 1
+            phase._failed = False
+        elif phase._defused:
+            active_phases -= 1
+            # leave _defused True so the label stays “DEFUSED”
+
+    # continue or finish
+    if strikes_left <= 0:
+        gui.conclusion(success=False)
+    elif active_phases <= 0:
+        gui.conclusion(success=True)
+    else:
+        window.after(100, check_phases)
+        
 def show_image(path, hold_ms=2000):
     """Full-screen Toplevel that auto-closes after hold_ms."""
     global img_window, img_photo
@@ -166,6 +204,10 @@ def update_gui():
     # 4) continue polling
     root.after(100, update_gui)
 
+def start_game():
+    gui.setup()
+    setup_phases()
+    window.after(100, check_phases)
 # —————————————————————————————————————————————
 # MAIN
 # —————————————————————————————————————————————
