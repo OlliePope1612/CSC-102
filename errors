@@ -1,13 +1,187 @@
+from tkinter import Tk, Toplevel, Label
+from PIL import Image, ImageTk
+from bomb_configs import *        # hardware components & constants
+from bomb_phases import *
+# File names for images
+challenge_images = [
+    "KEYPAD.jpeg",  # keypad challenge
+    "TOGGLES.jpeg",     # toggles challenge
+    "WIRES.jpeg",     # wires challenge
+    "BUTTON.jpeg",     # button challenge
+]
+strike_images = [
+    "STRIKE1.jpeg",
+    "STRIKE2.jpeg",
+    "STRIKE3.jpeg",
+    "STRIKE4.jpeg",
+]
 
->>> %Run bomb.py
-Exception in Tkinter callback
-Traceback (most recent call last):
-  File "/usr/lib/python3.11/tkinter/__init__.py", line 1948, in __call__
-    return self.func(*args)
-           ^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.11/tkinter/__init__.py", line 861, in callit
-    func(*args)
-  File "/home/spartans/CSC-102/bomb.py", line 81, in check_phases
-    ("_ltimer", timer), ("_lkeypad", keypad),
-                ^^^^^
-NameError: name 'timer' is not defined
+# Globals for image window
+img_window = None
+img_photo  = None
+
+# Helper: display fullscreen image
+def show_image(path):
+    global img_window, img_photo
+    try:
+        img_window.destroy()
+    except:
+        pass
+    img_window = Toplevel(window)
+    img_window.attributes('-fullscreen', True)
+    img_window.lift()
+    img_window.focus_force()
+    screen_w = window.winfo_screenwidth() - 400
+    screen_h = window.winfo_screenheight() - 100
+    img = Image.open(path).resize((screen_w, screen_h), Image.LANCZOS)
+    img_photo = ImageTk.PhotoImage(img)
+    lbl = Label(img_window, image=img_photo)
+    lbl.pack(fill='both', expand=True)
+
+# Core logic: monitor phases
+def check_phases():
+    global strikes_left, active_phases, handled_phases
+    # update LCD labels
+    for attr, phase in [
+        ("_ltimer", timer), ("_lkeypad", keypad),
+        ("_ltoggles", toggles), ("_lwires", wires), ("_lbutton", button)
+    ]:
+        try:
+            getattr(gui, attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
+        except:
+            pass
+    try:
+        gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except:
+        pass
+
+    # iterate in order: keypad, toggles, wires, button
+    for x, phase in enumerate((keypad, toggles, wires, button)):
+#         if phase in handled_phases:
+#             continue
+#         # failure handling
+#         if phase._failed:
+#             handled_phases.add(phase)
+#             # decrement strikes and choose strike image based on count
+#             strikes_left -= 1
+#             strike_count = NUM_STRIKES - strikes_left  # e.g. 1 for first strike
+#             img_x = min(strike_count - 1, len(strike_images) - 1)
+#             show_image(strike_images[img_x])
+# 
+#             def resume():
+#                 global strikes_left, handled_phases, keypad, toggles, wires, button
+#                 if strikes_left > 0:
+#                     # retry same challenge
+#                     show_image(challenge_images[x])
+#                     handled_phases.discard(phase)
+#                     # recreate and restart thread
+#                     if x == 0:
+#                         keypad = Keypad(component_keypad, "1999")
+#                         keypad.start()
+#                     elif x == 1:
+#                         toggles = Toggles(component_toggles, "1010")
+#                         toggles.start()
+#                     elif x == 2:
+#                         wires = Wires(component_wires, "01010")
+#                         wires.start()
+#                     else:
+#                         button = Button(
+#                             component_button_state,
+#                             component_button_RGB,
+#                             button_target, button_color, timer
+#                         )
+#                         button.start()
+#                     window.after(100, check_phases)
+#                 else:
+#                     gui.conclusion(success=False)
+# 
+#             window.after(5000, resume)
+#             return
+
+
+        
+        if NUM_STRIKES == 0:
+            img_window.destroy()
+        
+        if x == 0:
+            show_image(challenge_images[0])
+            if phase._value == correct_code:
+                handled_phases.add(phase)
+                phase._defuse()
+            else:
+                img_window.destroy()
+                show_image(strike_images[0])
+    #             keypad = Keypad(component_keypad, "1999")
+    #             keypad.start()
+        elif x == 1:
+            show_image(challenge_images[1])
+            if phase._running == correct_switch_pattern:
+                handled_phases.add(phase)
+                phase._defuse()
+            else:
+                img_window.destroy()
+                show_image(strike_images[1])
+        elif x == 2:
+            show_image(challenge_images[2])
+            if phase._running == correct_wire:
+                handled_phases.add(phase)
+                phase._defuse()
+            else:
+                img_window.destroy()
+                show_image(strike_images[2])
+                
+        if len(handled_phases) == 4:
+            img_window.destroy()
+            gui.conclusion(success=True)
+            
+    window.after(100, check_phases)
+
+# Initialize and start all phases
+def setup_phases():
+    global timer, keypad, toggles, wires, button, strikes_left, active_phases, handled_phases
+    strikes_left  = NUM_STRIKES
+    active_phases = NUM_PHASES
+    handled_phases = set()
+
+    timer   = Timer(component_7seg, COUNTDOWN)
+    keypad  = Keypad(component_keypad, "1999")       # hard-coded
+    toggles = Toggles(component_toggles, "1010")     # hard-coded
+    wires   = Wires(component_wires, "10101")        # odd-numbered wires
+    button  = Button(
+        component_button_state,
+        component_button_RGB,
+        button_color, timer
+    )
+
+    gui.setTimer(timer)
+    gui.setButton(button)
+
+    for phase in (timer, keypad, toggles, wires, button):
+        phase.start()
+
+    # show first challenge image
+    show_image(challenge_images[0])
+
+# Boot sequence
+def bootup(n=0):
+    if not ANIMATE or n >= len(boot_text):
+        gui.setup()
+    else:
+        if boot_text[n] != "\x00":
+            gui._lscroll["text"] += boot_text[n]
+        delay = 25 if boot_text[n] != "\x00" else 750
+        gui.after(delay, bootup, n+1)
+
+# Start game
+def start_game():
+    gui.setup()
+    setup_phases()
+    window.after(100, check_phases)
+
+# MAIN
+window = Tk()
+gui = Lcd(window)
+gui.after(1000, bootup)
+boot_duration = 1000 + len(boot_text) * 50
+gui.after(boot_duration, start_game)
+window.mainloop()
