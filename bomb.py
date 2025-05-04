@@ -1,4 +1,3 @@
-# bomb.py
 #################################
 # CSC 102 Defuse the Bomb Project
 # Main program w/ Family Guy “icing”
@@ -16,26 +15,25 @@ from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd
 img_window = None
 img_photo  = None
 
-def show_image(path, hold_ms=2000):
-    """Full-screen Toplevel that auto-closes after hold_ms."""
+def show_image(path, hold_ms=None):
+    """Pop up a full-screen image. If hold_ms is None, it stays up until next call; otherwise auto-closes."""
     global img_window, img_photo
     if img_window:
-        try: img_window.destroy()
-        except: pass
-
+        try:
+            img_window.destroy()
+        except:
+            pass
     img_window = Toplevel(root)
     img_window.attributes('-fullscreen', True)
-    # load & scale
-    w, h   = root.winfo_screenwidth(), root.winfo_screenheight()
-    img     = Image.open(path).resize((w, h), Image.LANCZOS)
+    w, h = root.winfo_screenwidth(), root.winfo_screenheight()
+    img = Image.open(path).resize((w, h), Image.LANCZOS)
     img_photo = ImageTk.PhotoImage(img)
     Label(img_window, image=img_photo).pack(fill='both', expand=True)
-
-    # schedule auto-close
-    root.after(hold_ms, img_window.destroy)
+    if hold_ms is not None:
+        root.after(hold_ms, img_window.destroy)
 
 # —————————————————————————————————————————————
-# Challenge & strike images (in phase order)
+# Challenge & strike images
 # —————————————————————————————————————————————
 challenge_images = [
     "KEYPAD.jpeg",   # phase 0 = Keypad
@@ -50,50 +48,44 @@ strike_images = [
 ]
 
 # —————————————————————————————————————————————
-# Global state
+# Global game state
 # —————————————————————————————————————————————
 strikes_left   = NUM_STRIKES
 active_phases  = NUM_PHASES
-handled_phases = set()     # keeps track of defused phases
-
-# placeholders for phase objects
-timer = keypad = wires = button = toggles = None
+handled_phases = set()
+timer = keypad = wires = toggles = button = None
 
 # —————————————————————————————————————————————
 # Phase setup
 # —————————————————————————————————————————————
 def setup_phases():
     global strikes_left, active_phases, handled_phases
+    global timer, keypad, wires, toggles, button
+
     strikes_left   = NUM_STRIKES
     active_phases  = NUM_PHASES
     handled_phases = set()
 
     # instantiate each phase
-    tmr     = Timer(component_7seg, COUNTDOWN)
-    kpd     = Keypad(component_keypad, keypad_target)
-    wres    = Wires(component_wires,   wires_target)
-    btn     = Button(component_button_state,
-                     component_button_rgb,
-                     button_target, button_color, tmr)
-    tgl     = Toggles(component_toggles, toggles_target)
+    timer   = Timer(component_7seg, COUNTDOWN)
+    keypad  = Keypad(component_keypad, str(keypad_target))
+    wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
+    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+    button  = Button(
+        component_button_state,
+        component_button_rgb,
+        button_target, button_color, timer,
+        submit_phases=(wires, toggles)
+    )
 
-    # connect to GUI
-    gui.setTimer(tmr)
-    gui.setButton(btn)
+    gui.setTimer(timer)
+    gui.setButton(button)
 
-    # start threads
-    for p in (tmr, kpd, wres, btn, tgl):
+    for p in (timer, keypad, wires, toggles, button):
         p.start()
 
-    # expose globally for update_gui
-    globals().update(timer=tmr,
-                     keypad=kpd,
-                     wires=wres,
-                     button=btn,
-                     toggles=tgl)
-
-    # show first challenge
-    show_image(challenge_images[0], hold_ms=1500)
+    # show first challenge (persistent)
+    show_image(challenge_images[0])
 
 # —————————————————————————————————————————————
 # GUI update & game logic
@@ -102,16 +94,15 @@ def update_gui():
     global strikes_left, active_phases
 
     # 1) refresh LCD labels
-    gui.labels['Time']['text']    = f'Time: {timer}'
-    gui.labels['Keypad']['text']  = f'Keypad: {keypad}'
-    gui.labels['Wires']['text']   = f'Wires: {wires}'
-    gui.labels['Button']['text']  = f'Button: {button}'
-    gui.labels['Toggles']['text'] = f'Toggles: {toggles}'
-    gui.labels['Strikes']['text'] = f'Strikes: {strikes_left}'
+    gui.labels['Time'][   'text'] = f"Time left: {timer}"
+    gui.labels['Keypad']['text'] = f"Keypad phase: {keypad}"
+    gui.labels['Wires'][  'text'] = f"Wires phase: {wires}"
+    gui.labels['Toggles'][ 'text'] = f"Toggles phase: {toggles}"
+    gui.labels['Button'][ 'text'] = f"Button phase: {button}"
+    gui.labels['Strikes']['text'] = f"Strikes left: {strikes_left}"
 
-    # 2) check each puzzle phase in order
-    phase_list = [keypad, wires, toggles, button]
-    for idx, phase in enumerate(phase_list):
+    phases = [keypad, wires, toggles, button]
+    for idx, phase in enumerate(phases):
         if phase in handled_phases:
             continue
 
@@ -119,51 +110,50 @@ def update_gui():
         if phase._failed:
             handled_phases.add(phase)
             strikes_left -= 1
-            # show strike image
             img_idx = min(NUM_STRIKES - strikes_left - 1, len(strike_images)-1)
-            show_image(strike_images[img_idx], hold_ms=1000)
-            # reset that phase thread by re-running only that one
-            def retry_phase():
-                # discard from handled so it can run again
+            # flash strike for 2s
+            show_image(strike_images[img_idx], hold_ms=2000)
+            def retry():
                 handled_phases.discard(phase)
-                # simple re-setup of that one phase only:
-                if idx==0:
-                    globals()['keypad'] = Keypad(component_keypad, keypad_target); keypad.start()
-                elif idx==1:
-                    globals()['wires']  = Wires(component_wires,  wires_target);  wires.start()
-                elif idx==2:
-                    globals()['toggles']= Toggles(component_toggles,toggles_target);toggles.start()
+                if idx == 0:
+                    globals()['keypad'] = Keypad(component_keypad, str(keypad_target))
+                    keypad.start()
+                elif idx == 1:
+                    globals()['wires']  = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
+                    wires.start()
+                elif idx == 2:
+                    globals()['toggles']= Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+                    toggles.start()
                 else:
-                    globals()['button'] = Button(component_button_state,
-                                                 component_button_rgb,
-                                                 button_target, button_color, timer)
+                    globals()['button'] = Button(
+                        component_button_state,
+                        component_button_rgb,
+                        button_target, button_color, timer,
+                        submit_phases=(wires, toggles)
+                    )
                     button.start()
-                root.after(200, update_gui)
-
-            root.after(1200, retry_phase)
+                root.after(100, update_gui)
+            root.after(2000, retry)
             return
 
         # DEFUSE?
         if phase._defused:
             handled_phases.add(phase)
             active_phases -= 1
-            # advance to next challenge image
-            next_idx = idx+1
+            next_idx = idx + 1
             if next_idx < len(challenge_images):
-                show_image(challenge_images[next_idx], hold_ms=1500)
-                root.after(1500, update_gui)
+                show_image(challenge_images[next_idx])
+                root.after(100, update_gui)
             else:
-                # all puzzles done → final success
                 timer.pause()
                 gui.conclusion(True)
             return
 
-    # 3) timer ran out?
+    # timer expired?
     if not timer._running:
         gui.conclusion(False)
         return
 
-    # 4) continue polling
     root.after(100, update_gui)
 
 # —————————————————————————————————————————————
@@ -172,9 +162,6 @@ def update_gui():
 root = tk.Tk()
 gui  = Lcd(root)
 gui.setup()
-
-# start everything after GUI is ready
 root.after(200, setup_phases)
-root.after(500, update_gui)
-
+root.after(400, update_gui)
 root.mainloop()
