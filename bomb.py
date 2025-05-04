@@ -41,6 +41,40 @@ def show_image(path):
     lbl = Label(img_window, image=img_photo)
     lbl.pack(fill='both', expand=True)
 
+def setup_phases():
+    global timer, keypad, toggles, wires, button, strikes_left, active_phases, handled_phases
+
+    # reset counters
+    strikes_left  = NUM_STRIKES
+    active_phases = NUM_PHASES
+    handled_phases = set()
+
+    # instantiate each phase
+    timer   = Timer(component_7seg, COUNTDOWN)
+    keypad  = Keypad(component_keypad, str(keypad_target))
+    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+    wires   = Wires(component_wires,    bin(wires_target)[2:].zfill(len(component_wires)))
+    button  = Button(
+        component_button_state,
+        component_button_RGB,
+        button_target, button_color, timer,
+        submit_phases=(toggles, wires)
+    )
+
+    # hook GUI controls into the timer & button
+    gui.setTimer(timer)
+    gui.setButton(button)
+
+    # start all of them
+    for phase in (timer, keypad, toggles, wires, button):
+        phase.start()
+
+    # show the very first “challenge” image (Keypad)
+    show_image(challenge_images[0])
+
+    # force the button into blue/submit mode until we hit the Button challenge
+    button._set_color("B")
+    
 # Core logic: monitor phases
 def check_phases():
     global strikes_left, active_phases, handled_phases
