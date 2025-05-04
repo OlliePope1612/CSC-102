@@ -7,13 +7,13 @@ import random
 # File names for images (place these in your working directory)
 challenge_images = [
     "KEYPAD.jpeg",  # for keypad
-    "TOGGLES.jpeg",     # for toggles
+    "meg.jpg",     # for toggles
     "meg.jpg",     # for wires
     "meg.jpg",     # for button
 ]
 strike_images = [
     "STRIKE1.jpeg",
-    "STRIKE2.jpeg",
+    "STRIKE1.jpeg",
     "STRIKE1.jpeg",
     "STRIKE1.jpeg",
 ]
@@ -57,10 +57,14 @@ def check_phases():
     for attr, phase in [("_ltimer",timer),("_lkeypad",keypad),
                         ("_ltoggles",toggles),("_lwires",wires),
                         ("_lbutton",button)]:
-        try: getattr(gui,attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
-        except: pass
-    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
-    except: pass
+        try:
+            getattr(gui,attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
+        except:
+            pass
+    try:
+        gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except:
+        pass
 
     for phase in (keypad, toggles, wires, button):
         # handle defuse
@@ -71,6 +75,8 @@ def check_phases():
             # show next challenge or win
             if idx < len(challenge_images)-1:
                 show_image(challenge_images[idx+1])
+                # resume phase checking for the next challenge
+                window.after(100, check_phases)
             else:
                 show_image(win_image)
                 gui.conclusion(success=True)
@@ -113,7 +119,8 @@ def setup_phases():
     keypad  = Keypad(component_keypad, "1999")  # hard-coded code
     toggles = Toggles(component_toggles, "1010")  # first & third flipped up
     wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
-    button  = Button(component_button_state, component_button_RGB, button_target, button_color, timer)
+    button  = Button(component_button_state, component_button_RGB,
+                     button_target, button_color, timer)
     gui.setTimer(timer)
     gui.setButton(button)
     for p in (timer, keypad, toggles, wires, button):
@@ -124,7 +131,8 @@ def bootup(n=0):
     if not ANIMATE or n >= len(boot_text):
         gui.setup()
     else:
-        if boot_text[n] != "\x00": gui._lscroll["text"] += boot_text[n]
+        if boot_text[n] != "\x00":
+            gui._lscroll["text"] += boot_text[n]
         delay = 25 if boot_text[n] != "\x00" else 750
         gui.after(delay, bootup, n+1)
 
@@ -138,8 +146,8 @@ def start_game():
 
 # MAIN
 window = Tk()
-    gui = Lcd(window)
-    gui.after(1000, bootup)
-    boot_duration = 1000 + len(boot_text)*50
-    gui.after(boot_duration, start_game)
-    window.mainloop()}]}
+gui = Lcd(window)
+gui.after(1000, bootup)
+boot_duration = 1000 + len(boot_text)*50
+gui.after(boot_duration, start_game)
+window.mainloop()
