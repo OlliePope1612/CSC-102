@@ -1,479 +1,187 @@
-# #################################
-# # CSC 102 Defuse the Bomb Project
-# # Configuration file
-# # Team:
-# #################################
-
-# # constants
-
-# # === MOCK RPi modules for testing on macOS ===
-# import sys
-# import types
-
-# # Create mock versions of Raspberry Pi hardware libraries
-# mock_modules = [
-#     "board",
-#     "digitalio",
-#     "busio",
-#     "adafruit_character_lcd"
-# ]
-
-# for mod in mock_modules:
-#     sys.modules[mod] = types.ModuleType(mod)
-
-# DEBUG = True        # debug mode?
-# RPi = False         # is this running on the RPi?
-# ANIMATE = True      # animate the LCD text?
-# SHOW_BUTTONS = False # show the Pause and Quit buttons on the main LCD GUI?
-# COUNTDOWN = 300     # the initial bomb countdown value (seconds)
-# NUM_STRIKES = 5     # the total strikes allowed before the bomb "explodes"
-# NUM_PHASES = 5      # the total number of initial active bomb phases
-
-# # imports
-# from random import randint, shuffle, choice
-# from string import ascii_uppercase
-# if RPi:
-#     import board
-#     from adafruit_ht16k33.segments import Seg7x4
-#     from digitalio import DigitalInOut, Direction, Pull
-#     from adafruit_matrixkeypad import Matrix_Keypad
-
-# #################################
-# # setup the electronic components
-# #################################
-# # 7-segment display
-# # 4 pins: 5V(+), GND(-), SDA, SCL
-# #         ----------7SEG---------
-# if RPi:
-#     i2c = board.I2C()
-#     component_7seg = Seg7x4(i2c)
-#     # set the 7-segment display brightness (0 -> dimmest; 1 -> brightest)
-#     component_7seg.brightness = 0.5
-
-# # keypad
-# # 8 pins: 10, 9, 11, 5, 6, 13, 19, NA
-# #         -----------KEYPAD----------
-# if RPi:
-#     # the pins
-#     keypad_cols = [DigitalInOut(i) for i in (board.D10, board.D9, board.D11)]
-#     keypad_rows = [DigitalInOut(i) for i in (board.D5, board.D6, board.D13, board.D19)]
-#     # the keys
-#     keypad_keys = ((1, 2, 3), (4, 5, 6), (7, 8, 9), ("*", 0, "#"))
-
-#     component_keypad = Matrix_Keypad(keypad_rows, keypad_cols, keypad_keys)
-
-# # jumper wires
-# # 10 pins: 14, 15, 18, 23, 24, 3V3, 3V3, 3V3, 3V3, 3V3
-# #          -------JUMP1------  ---------JUMP2---------
-# # the jumper wire pins
-# if RPi:
-#     # the pins
-#     component_wires = [DigitalInOut(i) for i in (board.D14, board.D15, board.D18, board.D23, board.D24)]
-#     for pin in component_wires:
-#         # pins are input and pulled down
-#         pin.direction = Direction.INPUT
-#         pin.pull = Pull.DOWN
-
-# # pushbutton
-# # 6 pins: 4, 17, 27, 22, 3V3, 3V3
-# #         -BUT1- -BUT2-  --BUT3--
-# if RPi:
-#     # the state pin (state pin is input and pulled down)
-#     component_button_state = DigitalInOut(board.D4)
-#     component_button_state.direction = Direction.INPUT
-#     component_button_state.pull = Pull.DOWN
-#     # the RGB pins
-#     component_button_RGB = [DigitalInOut(i) for i in (board.D17, board.D27, board.D22)]
-#     for pin in component_button_RGB:
-#         # RGB pins are output
-#         pin.direction = Direction.OUTPUT
-#         pin.value = True
-
-# # toggle switches
-# # 3x3 pins: 12, 16, 20, 21, 3V3, 3V3, 3V3, 3V3, GND, GND, GND, GND
-# #           -TOG1-  -TOG2-  --TOG3--  --TOG4--  --TOG5--  --TOG6--
-# if RPi:
-#     # the pins
-#     component_toggles = [DigitalInOut(i) for i in (board.D12, board.D16, board.D20)]
-#     for pin in component_toggles:
-#         # pins are input and pulled down
-#         pin.direction = Direction.INPUT
-#         pin.pull = Pull.DOWN
-
-# # ────────── Mock hardware for macOS/DEBUG mode ──────────
-# if not RPi:
-#     class MockSeg7x4:
-#         def __init__(self):     self.blink_rate = 0
-#         def print(self, s):     pass
-#         def fill(self, v):      pass
-
-#     class MockKeypad:
-#         def __init__(self):     self.pressed_keys = []
-
-#     class MockWire:
-#         def __init__(self, idx): self._idx, self._cut = idx, False
-#         def is_cut(self):        return self._cut
-#         def cut(self):           self._cut = True
-
-#     class MockDigitalInOut:
-#         def __init__(self):     self.value = False
-#         def read(self):         return self.value
-
-#     class MockTogglePin:
-#         def __init__(self):     self.value = False
-#         def read(self):         return self.value
-
-#     component_7seg         = MockSeg7x4()
-#     component_keypad       = MockKeypad()
-#     component_wires        = [MockWire(i) for i in range(5)]
-#     component_button_state = MockDigitalInOut()
-#     component_button_RGB   = [MockDigitalInOut() for _ in range(3)]
-#     component_toggles      = [MockTogglePin()  for _ in range(3)]
-
-# ###########
-# # functions
-# ###########
-# # generates the bomb's serial number
-# #  it should be made up of alphaneumeric characters, and include at least 3 digits and 3 letters
-# #  the sum of the digits should be in the range 1..15 to set the toggles target
-# #  the first three letters should be distinct and in the range 0..4 such that A=0, B=1, etc, to match the jumper wires
-# #  the last letter should be outside of the range
-# def genSerial():
-#     # set the digits (used in the toggle switches phase)
-#     serial_digits = []
-#     toggle_value = randint(1, 15)
-#     # the sum of the digits is the toggle value
-#     while (len(serial_digits) < 3 or toggle_value - sum(serial_digits) > 0):
-#         d = randint(0, min(9, toggle_value - sum(serial_digits)))
-#         serial_digits.append(d)
-
-#     # set the letters (used in the jumper wires phase)
-#     jumper_indexes = [ 0 ] * 5
-#     while (sum(jumper_indexes) < 3):
-#         jumper_indexes[randint(0, len(jumper_indexes) - 1)] = 1
-#     jumper_value = int("".join([ str(n) for n in jumper_indexes ]), 2)
-#     # the letters indicate which jumper wires must be "cut"
-#     jumper_letters = [ chr(i + 65) for i, n in enumerate(jumper_indexes) if n == 1 ]
-
-#     # form the serial number
-#     serial = [ str(d) for d in serial_digits ] + jumper_letters
-#     # and shuffle it
-#     shuffle(serial)
-#     # finally, add a final letter (F..Z)
-#     serial += [ choice([ chr(n) for n in range(70, 91) ]) ]
-#     # and make the serial number a string
-#     serial = "".join(serial)
-
-#     return serial, toggle_value, jumper_value
-
-# # generates the keypad combination from a keyword and rotation key
-# def genKeypadCombination():
-#     # encrypts a keyword using a rotation cipher
-#     def encrypt(keyword, rot):
-#         cipher = ""
-
-#         # encrypt each letter of the keyword using rot
-#         for c in keyword:
-#             cipher += chr((ord(c) - 65 + rot) % 26 + 65)
-
-#         return cipher
-
-#     # returns the keypad digits that correspond to the passphrase
-#     def digits(passphrase):
-#         combination = ""
-#         keys = [ None, None, "ABC", "DEF", "GHI", "JKL", "MNO", "PRS", "TUV", "WXY" ]
-
-#         # process each character of the keyword
-#         for c in passphrase:
-#             for i, k in enumerate(keys):
-#                 if (k and c in k):
-#                     # map each character to its digit equivalent
-#                     combination += str(i)
-
-#         return combination
-
-#     # the list of keywords and matching passphrases
-#     keywords = { "BANDIT": "RIVER",\
-#                  "BUCKLE": "FADED",\
-#                  "CANOPY": "FOXES",\
-#                  "DEBATE": "THROW",\
-#                  "FIERCE": "TRICK",\
-#                  "GIFTED": "CYCLE",\
-#                  "IMPACT": "STOLE",\
-#                  "LONELY": "TOADY",\
-#                  "MIGHTY": "ALOOF",\
-#                  "NATURE": "CARVE",\
-#                  "REBORN": "CLIMB",\
-#                  "RECALL": "FEIGN",\
-#                  "SYSTEM": "LEAVE",\
-#                  "TAKING": "SPINY",\
-#                  "WIDELY": "BOUND",\
-#                  "ZAGGED": "YACHT" }
-#     # the rotation cipher key
-#     rot = randint(1, 25)
-
-#     # pick a keyword and matching passphrase
-#     keyword, passphrase = choice(list(keywords.items()))
-#     # encrypt the passphrase and get its combination
-#     cipher_keyword = encrypt(keyword, rot)
-#     combination = digits(passphrase)
-
-#     return keyword, cipher_keyword, rot, combination, passphrase
-
-# ###############################
-# # generate the bomb's specifics
-# ###############################
-# # generate the bomb's serial number (which also gets us the toggle and jumper target values)
-# #  serial: the bomb's serial number
-# #  toggles_target: the toggles phase defuse value
-# #  wires_target: the wires phase defuse value
-# serial, toggles_target, wires_target = genSerial()
-
-# # generate the combination for the keypad phase
-# #  keyword: the plaintext keyword for the lookup table
-# #  cipher_keyword: the encrypted keyword for the lookup table
-# #  rot: the key to decrypt the keyword
-# #  keypad_target: the keypad phase defuse value (combination)
-# #  passphrase: the target plaintext passphrase
-# keyword, cipher_keyword, rot, keypad_target, passphrase = genKeypadCombination()
-
-# # generate the color of the pushbutton (which determines how to defuse the phase)
-# button_color = choice(["R", "G", "B"])
-# # appropriately set the target (R is None)
-# button_target = None
-# # G is the first numeric digit in the serial number
-# if (button_color == "G"):
-#     button_target = [ n for n in serial if n.isdigit() ][0]
-# # B is the last numeric digit in the serial number
-# elif (button_color == "B"):
-#     button_target = [ n for n in serial if n.isdigit() ][-1]
-
-# if (DEBUG):
-#     print(f"Serial number: {serial}")
-#     print(f"Toggles target: {bin(toggles_target)[2:].zfill(4)}/{toggles_target}")
-#     print(f"Wires target: {bin(wires_target)[2:].zfill(5)}/{wires_target}")
-#     print(f"Keypad target: {keypad_target}/{passphrase}/{keyword}/{cipher_keyword}(rot={rot})")
-#     print(f"Button target: {button_target}")
-
-# # set the bomb's LCD bootup text
-# boot_text = f"Booting...\n\x00\x00"\
-#             f"*Kernel v3.1.4-159 loaded.\n"\
-#             f"Initializing subsystems...\n\x00"\
-#             f"*System model: 102BOMBv4.2\n"\
-#             f"*Serial number: {serial}\n"\
-#             f"Encrypting keypad...\n\x00"\
-#             f"*Keyword: {cipher_keyword}; key: {rot}\n"\
-#             f"*{' '.join(ascii_uppercase)}\n"\
-#             f"*{' '.join([str(n % 10) for n in range(26)])}\n"\
-#             f"Rendering phases...\x00"
-
-#################################
-# CSC 102 Defuse the Bomb Project
-# Configuration file – Day 5 Hardware Integration
-# Team:
-#################################
-
-# Detect environment: real Raspberry Pi vs. mock (macOS) mode
-try:
-    import board, busio, digitalio
-    from adafruit_ht16k33.segments import Seg7x4
-    from digitalio import DigitalInOut, Direction, Pull
-    from adafruit_matrixkeypad import Matrix_Keypad
-    RPi = True
-except ImportError:
-    RPi = False
-
-# Enable debug prints and mock modules only when not on the Pi
-debug_mode = not RPi
-DEBUG = debug_mode
-ANIMATE = True        # animate the LCD boot text?
-SHOW_BUTTONS = True   # show Pause/Quit buttons in GUI (only matters in mock)
-COUNTDOWN = 300       # initial countdown (seconds)
-NUM_STRIKES = 5       # allowed strikes before explosion
-NUM_PHASES = 5        # total phases: Timer, Keypad, Wires, Button, Toggles
-STAR_CLEARS_PASS = True# allows star key to clear passcode
-
-# Base imports used in both modes
-from random import randint, shuffle, choice
-from string import ascii_uppercase
-
-# Inject mock modules when in debug mode (macOS)
-if DEBUG:
-    import sys, types
-    mock_modules = ["board", "digitalio", "busio", "adafruit_character_lcd"]
-    for mod in mock_modules:
-        sys.modules[mod] = types.ModuleType(mod)
-
-#################################
-# setup the electronic components
-#################################
-if RPi:
-    # 7‐segment display over I2C
-    i2c = busio.I2C(board.SCL, board.SDA)
-    component_7seg = Seg7x4(i2c)
-    component_7seg.brightness = 0.5
-
-    # matrix keypad
-    keypad_cols = [DigitalInOut(i) for i in (board.D10, board.D9, board.D11)]
-    keypad_rows = [DigitalInOut(i) for i in (board.D5, board.D6, board.D13, board.D19)]
-    keypad_keys = ((1,2,3), (4,5,6), (7,8,9), ("*",0,"#"))
-    component_keypad = Matrix_Keypad(keypad_rows, keypad_cols, keypad_keys)
-
-    # jumper wires
-    component_wires = [DigitalInOut(i) for i in (board.D14, board.D15, board.D18, board.D23, board.D24)]
-    for pin in component_wires:
-        pin.direction = Direction.INPUT
-        pin.pull = Pull.DOWN
-
-    # pushbutton (state + RGB)
-    component_button_state = DigitalInOut(board.D4)
-    component_button_state.direction = Direction.INPUT
-    component_button_state.pull = Pull.DOWN
-    component_button_RGB = [DigitalInOut(i) for i in (board.D17, board.D27, board.D22)]
-    for pin in component_button_RGB:
-        pin.direction = Direction.OUTPUT
-        pin.value = True
-
-    # toggle switches (3-pin configuration)
-    component_toggles = [DigitalInOut(i) for i in (board.D12, board.D16, board.D20, board.D21)]
-    for pin in component_toggles:
-        pin.direction = Direction.INPUT
-        pin.pull    = Pull.DOWN
-
-else:
-    # mock hardware components for macOS debug
-    class MockSeg7x4:
-        def __init__(self): self.blink_rate = 0
-        def print(self, s): pass
-        def fill(self, v):    pass
-
-    class MockKeypad:
-        def __init__(self): self.pressed_keys = []
-
-    class MockWire:
-        def __init__(self, idx): self._idx, self._cut = idx, False
-        def is_cut(self):        return self._cut
-        def cut(self):           self._cut = True
-
-    class MockDigitalInOut:
-        def __init__(self): self.value = False
-        def read(self):       return self.value
-
-    class MockTogglePin:
-        def __init__(self): self.value = False
-        def read(self):       return self.value
-
-    component_7seg         = MockSeg7x4()
-    component_keypad       = MockKeypad()
-    component_wires        = [MockWire(i) for i in range(5)]
-    component_button_state = MockDigitalInOut()
-    component_button_RGB   = [MockDigitalInOut() for _ in range(3)]
-    component_toggles      = [MockTogglePin() for _ in range(4)]
-
-###########
-# helper functions: serial generation & keypad cipher
-###########
-
-def genSerial():
-    # digits for toggles sum
-    serial_digits = []
-    toggle_value  = randint(1, 7)  # restrict to 3-bit range 1..7
-    while len(serial_digits) < 3 or toggle_value - sum(serial_digits) > 0:
-        d = randint(0, min(9, toggle_value - sum(serial_digits)))
-        serial_digits.append(d)
-
-    # wires pattern: pick 3 of 5 bits
-    jumper_indexes = [0]*5
-    while sum(jumper_indexes) < 3:
-        jumper_indexes[randint(0, 4)] = 1
-    jumper_value   = int("".join(str(n) for n in jumper_indexes), 2)
-    jumper_letters = [ chr(i+65) for i,n in enumerate(jumper_indexes) if n == 1]
-
-    # build & shuffle serial
-    serial = [str(d) for d in serial_digits] + jumper_letters
-    shuffle(serial)
-    serial += [ choice([chr(n) for n in range(70,91)]) ]
-    return "".join(serial), toggle_value, jumper_value
-
-
-def genKeypadCombination():
-    def encrypt(keyword, rot):
-        return "".join(chr((ord(c)-65+rot)%26+65) for c in keyword)
-    def digits(passphrase):
-        keys = [None, None, "ABC","DEF","GHI","JKL","MNO","PRS","TUV","WXY"]
-        combo = ""
-        for c in passphrase:
-            for i,k in enumerate(keys):
-                if k and c in k:
-                    combo += str(i)
-        return combo
-
-    keywords = {"BANDIT":"RIVER","BUCKLE":"FADED","CANOPY":"FOXES",
-                "DEBATE":"THROW","FIERCE":"TRICK","GIFTED":"CYCLE",
-                "IMPACT":"STOLE","LONELY":"TOADY","MIGHTY":"ALOOF",
-                "NATURE":"CARVE","REBORN":"CLIMB","RECALL":"FEIGN",
-                "SYSTEM":"LEAVE","TAKING":"SPINY","WIDELY":"BOUND",
-                "ZAGGED":"YACHT"}
-    rot        = randint(1,25)
-    keyword, passphrase = choice(list(keywords.items()))
-    cipher_keyword = encrypt(keyword, rot)
-    combination    = digits(passphrase)
-    return keyword, cipher_keyword, rot, combination, passphrase
-
-###############################
-# generate bomb specifics
-###############################
-serial, toggles_target, wires_target = genSerial()
-keyword, cipher_keyword, rot, keypad_target, passphrase = genKeypadCombination()
-button_color = choice(["R","G","B"])
-if button_color == "G":
-    button_target = next(n for n in serial if n.isdigit())
-elif button_color == "B":
-    button_target = next(n for n in reversed(serial) if n.isdigit())
-else:
-    button_target = None
-
-if DEBUG:
-    print(f"Serial number: {serial}")
-    print(f"Toggles target: {bin(toggles_target)[2:].zfill(len(component_toggles))}/{toggles_target}")
-    print(f"Wires target:   {bin(wires_target)[2:].zfill(len(component_wires))}/{wires_target}")
-    print(f"Keypad target:  {keypad_target}/{passphrase}/{cipher_keyword}(rot={rot})")
-    print(f"Button target:  {button_target}")
-
-# bootup splash text
-boot_text = (
-    "Booting...\n\x00\x00"
-    "*Kernel v3.1.4-159 loaded.\n"
-    "Initializing subsystems...\n\x00"
-    "*System model: 102BOMBv4.2\n"
-    f"*Serial number: {serial}\n"
-    "Encrypting keypad...\n\x00"
-    f"*Keyword: {cipher_keyword}; key: {rot}\n"
-    "*" + " ".join(ascii_uppercase) + "\n"
-    "*" + " ".join(str(n%10) for n in range(26)) + "\n"
-    "Rendering phases...\x00"
-)
-from bombphases import Keypad, Wires, Toggles
+from tkinter import Tk, Toplevel, Label, Entry, Button, Checkbutton, IntVar
+from bomb_configs import *        # brings in component_7seg, component_keypad, COUNTDOWN, correct_code, etc.
+from bomb_phases import *         # brings in Timer, Keypad, Wires, Button, Toggles, Lcd, plus Family Guy lines
 import random
 
-# === FAMILY GUY THEME: Randomized bomb targets ===
+# Helper to chain windows once a phase is defused
+def after_defuse(phase, callback):
+    if phase._defused:
+        callback()
+    else:
+        window.after(100, after_defuse, phase, callback)
 
-# Generate random target values
-correct_code = str(random.randint(10000, 99999))  # 5-digit code for keypad
-correct_wire = random.choice(["orange", "yellow", "blue", "green", "purple"])  # unplug wire
-correct_switch_pattern = "".join([str(random.choice([0, 1])) for _ in range(4)])  # e.g., "1010"
+# --- KEYPAD PHASE WINDOW ---
+def show_keypad_window():
+    top = Toplevel(window)
+    top.title("Family Guy Keypad Challenge")
+    Label(top, text=random.choice(quagmire_lines),
+          font=("Courier New",16), wraplength=300).pack(pady=10)
+    entry = Entry(top, font=("Courier New",18), justify="center")
+    entry.pack(pady=10)
+    Button(top, text="Submit", font=("Courier New",14),
+           command=lambda: on_keypad_submit(entry, top)).pack(pady=5)
+    top.grab_set()
 
-# Show debug values if needed
-if DEBUG:
-    print("\n[DEBUG MODE] Bomb Configuration:")
-    print(f"Keypad code: {correct_code}")
-    print(f"Correct wire: {correct_wire}")
-    print(f"Switch pattern: {correct_switch_pattern}\n")
+def on_keypad_submit(entry, top):
+    if entry.get() == correct_code:    # use correct_code from bomb_configs
+        keypad.defuse()
+        top.destroy()
 
-# === Component-phase mapping ===
-phase_defs = [
-    (component_keypad, Keypad, correct_code),
-    (component_wires,  Wires,  correct_wire),
-    (component_toggles, Toggles, correct_switch_pattern)
-]
+# --- TOGGLES (SWITCHES) PHASE WINDOW ---
+def show_switch_window():
+    top = Toplevel(window)
+    top.title("Family Guy Switch Challenge")
+    Label(top, text=random.choice(joe_lines),
+          font=("Courier New",16), wraplength=300).pack(pady=10)
 
+    vars = []
+    for i in range(len(toggles._target)):
+        v = IntVar(value=0)
+        Checkbutton(top, text=f"Switch {i+1}", variable=v,
+                    font=("Courier New",14)).pack(anchor="w")
+        vars.append(v)
+
+    def submit():
+        pattern = "".join(str(v.get()) for v in vars)
+        if pattern == toggles._target:
+            toggles.defuse()
+            top.destroy()
+
+    Button(top, text="Submit", font=("Courier New",14),
+           command=submit).pack(pady=5)
+    top.grab_set()
+
+# --- WIRES PHASE WINDOW ---
+def show_wires_window():
+    top = Toplevel(window)
+    top.title("Family Guy Wires Challenge")
+    Label(top, text=random.choice(cleveland_lines),
+          font=("Courier New",16), wraplength=300).pack(pady=10)
+
+    for idx, wire in enumerate(component_wires):
+        Button(top, text=f"Cut Wire {idx+1}", font=("Courier New",14),
+               command=wire.cut).pack(fill="x", padx=20, pady=2)
+
+    def check_cut():
+        bits = "".join("1" if w.is_cut() else "0"
+                       for w in component_wires)
+        if bits == wires._target_bits:
+            wires.defuse()
+            top.destroy()
+        else:
+            top.after(200, check_cut)
+
+    Button(top, text="Done", font=("Courier New",14),
+           command=check_cut).pack(pady=10)
+    top.grab_set()
+
+# --- BUTTON PHASE WINDOW ---
+def show_button_window():
+    top = Toplevel(window)
+    top.title("Family Guy Button Challenge")
+    Label(top, text=random.choice(quagmire_lines + joe_lines + cleveland_lines),
+          font=("Courier New",16), wraplength=300).pack(pady=10)
+
+    def on_press():
+        # simulate press/release
+        button._component.value = True
+        button._pressed = True
+        button._component.value = False
+
+        # defuse logic
+        if button._target is None or str(button._target) in timer._sec:
+            button.defuse()
+        else:
+            button.fail()
+        top.destroy()
+
+    Button(top, text="Press Me", font=("Courier New",18),
+           command=on_press).pack(pady=20)
+    top.grab_set()
+
+# --- CORE GAME LOGIC ---
+def check_phases():
+    global strikes_left, active_phases, handled_phases
+
+    # update labels
+    try: gui._ltimer["text"]   = f"Time left: {timer}"
+    except: pass
+    try: gui._lkeypad["text"]  = f"Keypad phase: {keypad}"
+    except: pass
+    try: gui._lwires["text"]   = f"Wires phase: {wires}"
+    except: pass
+    try: gui._lbutton["text"]  = f"Button phase: {button}"
+    except: pass
+    try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
+    except: pass
+    try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except: pass
+
+    # handle defuses/fails
+    for phase in (keypad, wires, button, toggles):
+        if phase in handled_phases:
+            continue
+        if phase._failed:
+            strikes_left -= 1
+            active_phases -= 1
+            handled_phases.add(phase)
+        elif phase._defused:
+            active_phases -= 1
+            handled_phases.add(phase)
+
+    # check end conditions
+    if strikes_left <= 0:
+        gui.conclusion(success=False)
+    elif active_phases <= 0:
+        gui.conclusion(success=True)
+    else:
+        window.after(100, check_phases)
+
+# --- INITIALIZE PHASE THREADS ---
+def setup_phases():
+    global timer, keypad, wires, button, toggles, strikes_left, active_phases
+    strikes_left  = NUM_STRIKES
+    active_phases = NUM_PHASES
+
+    timer   = Timer(component_7seg, COUNTDOWN)
+    keypad  = Keypad(component_keypad, correct_code)
+    wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
+    button  = Button(component_button_state, component_button_RGB,
+                     button_target, button_color, timer)
+    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+
+    gui.setTimer(timer)
+    gui.setButton(button)
+
+    for phase in (timer, keypad, wires, button, toggles):
+        phase.start()
+
+# --- BOOTUP SEQUENCE ---
+def bootup(n=0):
+    if not ANIMATE or n >= len(boot_text):
+        gui.setup()
+    else:
+        if boot_text[n] != "\x00":
+            gui._lscroll["text"] += boot_text[n]
+        delay = 25 if boot_text[n] != "\x00" else 750
+        gui.after(delay, bootup, n+1)
+
+# --- START GAME (chained windows) ---
+def start_game():
+    gui.setup()
+    setup_phases()
+
+    show_keypad_window()
+    after_defuse(keypad,     show_switch_window)
+    after_defuse(toggles,    show_wires_window)
+    after_defuse(wires,      show_button_window)
+
+    window.after(100, check_phases)
+
+# --- MAIN ---
+window = Tk()
+gui = Lcd(window)
+gui.after(1000, bootup)
+boot_duration = 1000 + len(boot_text) * 50
+gui.after(boot_duration, start_game)
+window.mainloop()
