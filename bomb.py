@@ -7,9 +7,9 @@ import random
 # File names for images (place these in your working directory)
 challenge_images = [
     "KEYPAD.jpeg",  # for keypad
-    "meg.jpg",  # for toggles
-    "meg.jpg",  # for wires
-    "meg.jpg",  # for button
+    "meg.jpg",     # for toggles
+    "meg.jpg",     # for wires
+    "meg.jpg",     # for button
 ]
 strike_images = [
     "STRIKE1.jpeg",
@@ -19,6 +19,7 @@ strike_images = [
 ]
 game_over_image = "peter_drunk.jpg"
 win_image       = "yayyy.jpg"
+
 
 # Globals for image window
 img_window = None
@@ -36,10 +37,10 @@ def show_image(path):
     img_window.lift()
     img_window.focus_force()
     img_window.config(bg='black')
-    # load and resize image to screen size
+    # load and resize image to screen size using high-quality LANCZOS resampling
     screen_w = window.winfo_screenwidth()
     screen_h = window.winfo_screenheight()
-    img = Image.open(path).resize((screen_w, screen_h), Image.ANTIALIAS)
+    img = Image.open(path).resize((screen_w, screen_h), Image.LANCZOS)
     img_photo = ImageTk.PhotoImage(img)
     lbl = Label(img_window, image=img_photo)
     lbl.pack(fill='both', expand=True)
@@ -49,7 +50,6 @@ handled_phases = set()
 
 def check_phases():
     global strikes_left, active_phases, handled_phases
-    # update underlying LCD labels (optional)
     try: gui._ltimer["text"]   = f"Time left: {timer}"
     except: pass
     try: gui._lkeypad["text"]  = f"Keypad: {keypad}"
@@ -66,19 +66,17 @@ def check_phases():
     for phase in (keypad, toggles, wires, button):
         if phase in handled_phases:
             continue
-        # failure
         if phase._failed:
             strikes_left -= 1
             active_phases -= 1
             handled_phases.add(phase)
-            strike_num = len(strike_images) - strikes_left
+            strike_num = NUM_STRIKES - strikes_left
             if strikes_left > 0 and strike_num <= len(strike_images):
                 show_image(strike_images[strike_num-1])
             else:
                 show_image(game_over_image)
             gui.conclusion(success=False)
             return
-        # defuse
         if phase._defused:
             active_phases -= 1
             handled_phases.add(phase)
@@ -90,7 +88,6 @@ def check_phases():
                 gui.conclusion(success=True)
                 return
 
-    # continue polling
     window.after(100, check_phases)
 
 # Initialize phase threads
@@ -109,7 +106,7 @@ def setup_phases():
     for p in (timer, keypad, toggles, wires, button):
         p.start()
 
-# Boot sequence (as before)
+# Boot sequence
 def bootup(n=0):
     if not ANIMATE or n >= len(boot_text):
         gui.setup()
@@ -119,7 +116,7 @@ def bootup(n=0):
         delay = 25 if boot_text[n] != "\x00" else 750
         gui.after(delay, bootup, n+1)
 
-# Start game: show first challenge image and begin polling
+# Start game
 def start_game():
     gui.setup()
     setup_phases()
