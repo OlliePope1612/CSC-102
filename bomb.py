@@ -20,7 +20,6 @@ game_over_image = "peter_drunk.jpg"
 win_image       = "yayyy.jpg"
 
 # Globals for image window
-global img_window, img_photo
 img_window = None
 img_photo  = None
 
@@ -43,57 +42,66 @@ def show_image(path):
     lbl.pack(fill='both', expand=True)
 
 # Core logic: monitor phases
-def check_phases():():
-     global strikes_left, active_phases
-     # update LCD labels
-     for attr, phase in [("_ltimer", timer), ("_lkeypad", keypad),
-                         ("_ltoggles", toggles), ("_lwires", wires), ("_lbutton", button)]:
-         try:
-             getattr(gui, attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
-         except:
-             pass
-     try:
-         gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
-     except:
-         pass
+def check_phases():
+    global strikes_left, active_phases, handled_phases
+    # update LCD labels
+    for attr, phase in [
+        ("_ltimer", timer), ("_lkeypad", keypad),
+        ("_ltoggles", toggles), ("_lwires", wires), ("_lbutton", button)
+    ]:
+        try:
+            getattr(gui, attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
+        except:
+            pass
+    try:
+        gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except:
+        pass
 
-     # iterate in order: keypad, toggles, wires, button
-     for idx, phase in enumerate((keypad, toggles, wires, button)):
-         if phase in handled_phases:
-             continue
-         # failure handling
-         if phase._failed:
-             handled_phases.add(phase)
-             strikes_left -= 1
-             show_image(strike_images[min(idx, len(strike_images)-1)])
-             def resume():
-    print("Resuming phase retry for index:", idx)  # Debug print added
-                 global keypad, toggles, wires, button, strikes_left
-                 if strikes_left > 0:
-                     show_image(challenge_images[idx])
-                     handled_phases.discard(phase)
-                     # recreate and restart this phase thread
-                     if idx == 0:
-                         keypad = Keypad(component_keypad, "1999")
-                         keypad.start()
-                     elif idx == 1:
-                         toggles = Toggles(component_toggles, "1010")
-                         toggles.start()
-                     elif idx == 2:
-                         wires = Wires(component_wires, "10101")
-                         wires.start()
-                     elif idx == 3:
-                         button = Button(component_button_state, component_button_RGB,
-                                         button_target, button_color, timer)
-                         button.start()
-                     window.after(100, check_phases)
-                 else:
-                     show_image(game_over_image)
-                     gui.conclusion(success=False)
-             window.after(5000, resume)
-             return
-         # defuse handling
-                 # defuse
+    # iterate in order: keypad, toggles, wires, button
+    for idx, phase in enumerate((keypad, toggles, wires, button)):
+        # skip if already handled
+        if phase in handled_phases:
+            continue
+
+        # failure handling
+        if phase._failed:
+            handled_phases.add(phase)
+            strikes_left -= 1
+            show_image(strike_images[min(idx, len(strike_images)-1)])
+
+            def resume():
+                global strikes_left, handled_phases, keypad, toggles, wires, button
+                if strikes_left > 0:
+                    # retry same challenge
+                    show_image(challenge_images[idx])
+                    handled_phases.discard(phase)
+                    # recreate and restart thread
+                    if idx == 0:
+                        keypad = Keypad(component_keypad, "1999")
+                        keypad.start()
+                    elif idx == 1:
+                        toggles = Toggles(component_toggles, "1010")
+                        toggles.start()
+                    elif idx == 2:
+                        wires = Wires(component_wires, "10101")
+                        wires.start()
+                    else:
+                        button = Button(
+                            component_button_state,
+                            component_button_RGB,
+                            button_target, button_color, timer
+                        )
+                        button.start()
+                    window.after(100, check_phases)
+                else:
+                    show_image(game_over_image)
+                    gui.conclusion(success=False)
+
+            window.after(5000, resume)
+            return
+
+        # defuse handling
         if phase._defused:
             handled_phases.add(phase)
             active_phases -= 1
@@ -106,8 +114,8 @@ def check_phases():():
                 gui.conclusion(success=True)
             return
 
-     # continue polling
-     window.after(100, check_phases)
+    # continue polling if no state change
+    window.after(100, check_phases)
 
 # Initialize and start all phases
 def setup_phases():
@@ -119,10 +127,12 @@ def setup_phases():
     timer   = Timer(component_7seg, COUNTDOWN)
     keypad  = Keypad(component_keypad, "1999")       # hard-coded
     toggles = Toggles(component_toggles, "1010")     # hard-coded
-    wires   = Wires(component_wires, "10101")       # odd wires
-    button  = Button(component_button_state,
-                     component_button_RGB,
-                     button_target, button_color, timer)
+    wires   = Wires(component_wires, "10101")        # odd-numbered wires
+    button  = Button(
+        component_button_state,
+        component_button_RGB,
+        button_target, button_color, timer
+    )
 
     gui.setTimer(timer)
     gui.setButton(button)
@@ -138,7 +148,8 @@ def bootup(n=0):
     if not ANIMATE or n >= len(boot_text):
         gui.setup()
     else:
-        if boot_text[n] != "\x00": gui._lscroll["text"] += boot_text[n]
+        if boot_text[n] != "\x00":
+            gui._lscroll["text"] += boot_text[n]
         delay = 25 if boot_text[n] != "\x00" else 750
         gui.after(delay, bootup, n+1)
 
