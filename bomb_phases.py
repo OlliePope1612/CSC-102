@@ -210,9 +210,6 @@ class Wires(PhaseThread):
         )
 
 # Button Logic
-# -----------------------------------------------------------------------------
-# Button phase — minimal, single‐color, press-and-release defuse logic
-# -----------------------------------------------------------------------------
 class Button(PhaseThread):
     def __init__(self, state_pin, rgb_pins, target, color, timer, name="Button"):
         """
@@ -232,34 +229,36 @@ class Button(PhaseThread):
         self._set_color(color)
 
     def _set_color(self, color):
-        # False => LED on; True => LED off
         self._rgb[0].value = (color != "R")
         self._rgb[1].value = (color != "G")
         self._rgb[2].value = (color != "B")
 
-    def run(self):
+        def run(self):
         self._running = True
+        # light the initial color
+        self._set_color(self._color)
         while self._running:
-            state = self._component.value   # True when pressed
-            if state and not self._pressed:
-                # you just pressed it down
+            v = self._component.value
+            if v and not self._pressed:
                 self._pressed = True
 
-            if not state and self._pressed:
-                # you just released it → check target
-                # R (target None) always defuses on release
-                # G/B defuse only if the digit appears in the Timer’s seconds
-                if (self._target is None
-                    or str(self._target) in self._timer._sec):
-                    self.defuse()
+            if not v and self._pressed:
+                self._pressed = False
+
+                if self._color == "B":
+                    for phase in self._submit_phases:
+                        if not phase._defused and not phase._failed:
+                            if str(phase) == phase._target:
+                                phase.defuse()
+                            else:
+                                phase.fail()
                 else:
-                    self.fail()
-                return
-
-            sleep(0.1)
-
-    def __str__(self):
-        return "DEFUSED" if self._defused else ("Pressed" if self._component.value else "Released")
+                    if (self._target is None) or (str(self._target) in self._timer._sec):
+                        self.defuse()
+                    else:
+                        self.fail()
+                    return
+            sleep(0.05)
         
 # Toggles Logic
 class Toggles(PhaseThread):
