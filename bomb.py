@@ -16,7 +16,7 @@ from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd
 _img_window = None
 _img_photo  = None
 
-def show_image(path, hold_ms=1500):
+def show_image(path, hold_ms=None):
     """Pop up a full-screen Toplevel with the image, auto-close after hold_ms."""
     global _img_window, _img_photo
     if _img_window:
@@ -47,6 +47,7 @@ strike_images = [
     "STRIKE1.jpeg",
     "STRIKE2.jpeg",
     "STRIKE3.jpeg",
+    "STRIKE4.jpeg"
 ]
 
 # —————————————————————————————————————————————
@@ -113,7 +114,7 @@ def update_gui():
             # strike!
             handled_phases.add(ph)
             strikes_left -= 1
-            show_image(strike_images[min(strikes_left, len(strike_images)-1)])
+            show_image(strike_images[strikes_left-1], 3000)
             # retry just that phase
             def retry_phase():
                 handled_phases.discard(ph)
@@ -130,8 +131,7 @@ def update_gui():
                     globals()['button'] = Button(
                         component_button_state,
                         component_button_rgb,
-                        button_target, button_color, timer,
-                        submit_phases=(wires, toggles)
+                        button_target, button_color, timer
                     )
                     button.start()
                 root.after(500, update_gui)
