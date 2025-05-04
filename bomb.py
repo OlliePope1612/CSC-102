@@ -1,7 +1,7 @@
 from tkinter import Tk, Toplevel, Label
 from PIL import Image, ImageTk
 from bomb_configs import *        # component_7seg, component_keypad, COUNTDOWN, keypad_target, etc.
-from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd  # import only needed classes
+from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd  # needed classes
 import random
 
 # File names for images (place these in your working directory)
@@ -20,8 +20,8 @@ strike_images = [
 game_over_image = "peter_drunk.jpg"
 win_image       = "yayyy.jpg"
 
-
 # Globals for image window
+global img_window, img_photo
 img_window = None
 img_photo = None
 
@@ -37,7 +37,7 @@ def show_image(path):
     img_window.lift()
     img_window.focus_force()
     img_window.config(bg='black')
-    # load and resize image to screen size using high-quality LANCZOS resampling
+    # load and resize image to screen size using LANCZOS resampling
     screen_w = window.winfo_screenwidth()
     screen_h = window.winfo_screenheight()
     img = Image.open(path).resize((screen_w, screen_h), Image.LANCZOS)
@@ -48,46 +48,52 @@ def show_image(path):
 # Core GUI & game logic
 handled_phases = set()
 
+# Map phases to challenge image indices
+def phase_index(phase):
+    return {keypad:0, toggles:1, wires:2, button:3}[phase]
+
 def check_phases():
-    global strikes_left, active_phases, handled_phases
-    try: gui._ltimer["text"]   = f"Time left: {timer}"
-    except: pass
-    try: gui._lkeypad["text"]  = f"Keypad: {keypad}"
-    except: pass
-    try: gui._ltoggles["text"] = f"Toggles: {toggles}"
-    except: pass
-    try: gui._lwires["text"]   = f"Wires: {wires}"
-    except: pass
-    try: gui._lbutton["text"]  = f"Button: {button}"
-    except: pass
+    global strikes_left, active_phases
+    # update LCD labels
+    for attr, phase in [("_ltimer",timer),("_lkeypad",keypad),
+                        ("_ltoggles",toggles),("_lwires",wires),
+                        ("_lbutton",button)]:
+        try: getattr(gui,attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
+        except: pass
     try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
     except: pass
 
     for phase in (keypad, toggles, wires, button):
-        if phase in handled_phases:
-            continue
-        if phase._failed:
-            strikes_left -= 1
-            active_phases -= 1
+        # handle defuse
+        if phase._defused and phase not in handled_phases:
             handled_phases.add(phase)
-            strike_num = NUM_STRIKES - strikes_left
-            if strikes_left > 0 and strike_num <= len(strike_images):
-                show_image(strike_images[strike_num-1])
-            else:
-                show_image(game_over_image)
-            gui.conclusion(success=False)
-            return
-        if phase._defused:
             active_phases -= 1
-            handled_phases.add(phase)
-            idx = [keypad, toggles, wires, button].index(phase)
+            idx = phase_index(phase)
+            # show next challenge or win
             if idx < len(challenge_images)-1:
                 show_image(challenge_images[idx+1])
             else:
                 show_image(win_image)
                 gui.conclusion(success=True)
-                return
+            return
+        # handle failure
+        if phase._failed and phase not in handled_phases:
+            handled_phases.add(phase)
+            strikes_left -= 1
+            # show strike image briefly
+            idx = phase_index(phase)
+            strike_num = min(strikes_left, len(strike_images)-1)
+            show_image(strike_images[idx])
+            if strikes_left > 0:
+                # after 5 seconds, re-show the same challenge
+                window.after(5000, lambda idx=idx: show_image(challenge_images[idx]))
+            else:
+                # no strikes left -> game over
+                window.after(5000, lambda: show_image(game_over_image))
+                window.after(5000, lambda: gui.conclusion(success=False))
+            return
 
+    # continue polling
     window.after(100, check_phases)
 
 # Initialize phase threads
@@ -96,23 +102,20 @@ def setup_phases():
     strikes_left  = NUM_STRIKES
     active_phases = NUM_PHASES
     timer   = Timer(component_7seg, COUNTDOWN)
-    keypad  = Keypad(component_keypad, "1999")  # hard-coded keypad code
+    keypad  = Keypad(component_keypad, "1999")  # hard-coded code
     toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
     wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
-    button  = Button(component_button_state, component_button_RGB,
-                     button_target, button_color, timer)
+    button  = Button(component_button_state, component_button_RGB, button_target, button_color, timer)
     gui.setTimer(timer)
     gui.setButton(button)
-    for p in (timer, keypad, toggles, wires, button):
-        p.start()
+    for p in (timer, keypad, toggles, wires, button): p.start()
 
 # Boot sequence
 def bootup(n=0):
     if not ANIMATE or n >= len(boot_text):
         gui.setup()
     else:
-        if boot_text[n] != "\x00":
-            gui._lscroll["text"] += boot_text[n]
+        if boot_text[n] != "\x00": gui._lscroll["text"] += boot_text[n]
         delay = 25 if boot_text[n] != "\x00" else 750
         gui.after(delay, bootup, n+1)
 
@@ -120,13 +123,14 @@ def bootup(n=0):
 def start_game():
     gui.setup()
     setup_phases()
+    # show first challenge
     show_image(challenge_images[0])
     window.after(100, check_phases)
 
 # MAIN
 window = Tk()
-gui = Lcd(window)
-gui.after(1000, bootup)
-boot_duration = 1000 + len(boot_text)*50
-gui.after(boot_duration, start_game)
-window.mainloop()
+ gui = Lcd(window)
+ gui.after(1000, bootup)
+ boot_duration = 1000 + len(boot_text)*50
+ gui.after(boot_duration, start_game)
+ window.mainloop()
