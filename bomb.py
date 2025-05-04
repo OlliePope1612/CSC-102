@@ -97,26 +97,29 @@ def check_phases():
         # failure handling
         if phase._failed:
             handled_phases.add(phase)
-            strikes_left -= 1
+            strikes_left  -= 1
             strike_count = NUM_STRIKES - strikes_left
-            img_i = min(strike_count - 1, len(strike_images) - 1)
-            show_image(strike_images[img_i])
+            img_i = min(strike_count - 1, len(challenge_images) - 1)
+            show_image(challege_images[img_i])
 
-            def resume():
+            # capture the current index in failed_index
+            def resume(failed_index=i):
                 global keypad, toggles, wires, button, handled_phases
+
+                # allow this phase to be retried
                 handled_phases.discard(phase)
 
-                # re-start only the phase that failed
-                if i == 0:
+                # rebuild *only* the phase that failed
+                if failed_index == 0:
                     keypad = Keypad(component_keypad, str(keypad_target))
                     keypad.start()
-                elif i == 1:
+                elif failed_index == 1:
                     toggles = Toggles(
                         component_toggles,
                         bin(toggles_target)[2:].zfill(len(component_toggles))
                     )
                     toggles.start()
-                elif i == 2:
+                elif failed_index == 2:
                     wires = Wires(
                         component_wires,
                         bin(wires_target)[2:].zfill(len(component_wires))
@@ -131,10 +134,11 @@ def check_phases():
                     )
                     button.start()
 
-                # bring back the same challenge image
-                show_image(challenge_images[i])
+                # re‐show the same challenge
+                show_image(challenge_images[failed_index])
                 window.after(100, check_phases)
 
+            # wait 5s on the strike screen, then call resume with the correct index
             window.after(5000, resume)
             return
             
