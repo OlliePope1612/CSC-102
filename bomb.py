@@ -38,13 +38,15 @@ def check_phases():
 
     # handle failures/defuses
     for phase in (keypad, toggles, wires, button):
+        if phase is None:
+            continue
         if phase._failed:
             strikes_left  -= 1
             active_phases -= 1
-            phase._failed = False
+            phase._failed  = False
         elif phase._defused:
             active_phases -= 1
-            # leave _defused True so the label stays “DEFUSED”
+            # leave phase._defused True so the label stays “DEFUSED”
 
     # continue or finish
     if strikes_left <= 0:
