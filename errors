@@ -1,42 +1,5 @@
-def check_phases():
-    global strikes_left, active_phases
 
-    # While there are still phases to defuse and you haven’t exploded…
-    while active_phases > 0 and strikes_left > 0:
-        # 1) Refresh every label (wrapped in try/except so we don’t crash
-        #    if that widget has already been destroyed by conclusion())
-        try: gui._ltimer[  "text"] = f"Time left: {timer}"
-        except: pass
-        try: gui._lkeypad["text"] = f"Keypad phase: {keypad}"
-        except: pass
-        try: gui._lwires[  "text"] = f"Wires phase: {wires}"
-        except: pass
-        try: gui._lbutton["text"] = f"Button phase: {button}"
-        except: pass
-        try: gui._ltoggles["text"] = f"Toggles phase: {toggles}"
-        except: pass
-        try: gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
-        except: pass
-
-        # 2) Look at each non-timer phase:
-        for phase in (keypad, wires, button, toggles):
-            if phase._failed:
-                # somebody got it wrong → lose a strike
-                strikes_left  -= 1
-                active_phases -= 1
-                phase._failed  = False
-            elif phase._defused:
-                # that phase is done for good
-                active_phases -= 1
-                # (we leave phase._defused True so the label stays “DEFUSED”)
-
-        # 3) Give control back to Tk so the GUI remains responsive
-        gui.update()
-        gui.after(100)   # schedule next check in 100 ms
-        return           # IMPORTANT! return here so the loop is driven by after()
-
-    # 4) Once you exit the loop, show your final banner
-    gui.conclusion(success=(active_phases == 0))
+>>> %Run bomb.py
 Exception in Tkinter callback
 Traceback (most recent call last):
   File "/usr/lib/python3.11/tkinter/__init__.py", line 1948, in __call__
@@ -44,9 +7,7 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^
   File "/usr/lib/python3.11/tkinter/__init__.py", line 861, in callit
     func(*args)
-  File "/home/spartans/CSC-102/bomb.py", line 126, in start_game
-    show_image(challenge_images[0])
-  File "/home/spartans/CSC-102/bomb.py", line 42, in show_image
-    img = Image.open(path).resize((screen_w, screen_h), Image.ANTIALIAS)
-                                                        ^^^^^^^^^^^^^^^
-AttributeError: module 'PIL.Image' has no attribute 'ANTIALIAS'
+  File "/home/spartans/CSC-102/bomb.py", line 81, in check_phases
+    ("_ltimer", timer), ("_lkeypad", keypad),
+                ^^^^^
+NameError: name 'timer' is not defined
