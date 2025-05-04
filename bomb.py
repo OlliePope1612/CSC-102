@@ -7,13 +7,13 @@ import random
 # File names for images (place these in your working directory)
 challenge_images = [
     "KEYPAD.jpeg",  # for keypad
-    "meg.jpg",     # for toggles
+    "TOGGLES.jpeg",     # for toggles
     "meg.jpg",     # for wires
     "meg.jpg",     # for button
 ]
 strike_images = [
     "STRIKE1.jpeg",
-    "STRIKE1.jpeg",
+    "STRIKE2.jpeg",
     "STRIKE1.jpeg",
     "STRIKE1.jpeg",
 ]
@@ -21,7 +21,6 @@ game_over_image = "peter_drunk.jpg"
 win_image       = "yayyy.jpg"
 
 # Globals for image window
-global img_window, img_photo
 img_window = None
 img_photo = None
 
@@ -76,7 +75,7 @@ def check_phases():
                 show_image(win_image)
                 gui.conclusion(success=True)
             return
-                # handle failure
+        # handle failure
         if phase._failed and phase not in handled_phases:
             handled_phases.add(phase)
             strikes_left -= 1
@@ -112,12 +111,13 @@ def setup_phases():
     active_phases = NUM_PHASES
     timer   = Timer(component_7seg, COUNTDOWN)
     keypad  = Keypad(component_keypad, "1999")  # hard-coded code
-    toggles = Toggles(component_toggles, bin(toggles_target)[2:].zfill(len(component_toggles)))
+    toggles = Toggles(component_toggles, "1010")  # first & third flipped up
     wires   = Wires(component_wires, bin(wires_target)[2:].zfill(len(component_wires)))
     button  = Button(component_button_state, component_button_RGB, button_target, button_color, timer)
     gui.setTimer(timer)
     gui.setButton(button)
-    for p in (timer, keypad, toggles, wires, button): p.start()
+    for p in (timer, keypad, toggles, wires, button):
+        p.start()
 
 # Boot sequence
 def bootup(n=0):
@@ -138,8 +138,8 @@ def start_game():
 
 # MAIN
 window = Tk()
- gui = Lcd(window)
- gui.after(1000, bootup)
- boot_duration = 1000 + len(boot_text)*50
- gui.after(boot_duration, start_game)
- window.mainloop()
+    gui = Lcd(window)
+    gui.after(1000, bootup)
+    boot_duration = 1000 + len(boot_text)*50
+    gui.after(boot_duration, start_game)
+    window.mainloop()}]}
