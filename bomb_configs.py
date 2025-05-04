@@ -38,12 +38,12 @@ if RPi:
         p.direction = digitalio.Direction.INPUT
         p.pull      = digitalio.Pull.DOWN
 
-    # pushbutton (state + RGB)
+    # pushbutton (state + rgb)
     component_button_state = digitalio.DigitalInOut(board.D4)
     component_button_state.direction = digitalio.Direction.INPUT
     component_button_state.pull      = digitalio.Pull.DOWN
-    component_button_RGB   = [digitalio.DigitalInOut(pin) for pin in (board.D17, board.D27, board.D22)]
-    for p in component_button_RGB:
+    component_button_rgb   = [digitalio.DigitalInOut(pin) for pin in (board.D17, board.D27, board.D22)]
+    for p in component_button_rgb:
         p.direction = digitalio.Direction.OUTPUT
         p.value     = True
 
@@ -76,7 +76,7 @@ else:
     component_keypad       = MockKeypad()
     component_wires        = [MockWire(i) for i in range(5)]
     component_button_state = MockPin()
-    component_button_RGB   = [MockPin() for _ in range(3)]
+    component_button_rgb   = [MockPin() for _ in range(3)]
     component_toggles      = [MockPin() for _ in range(4)]
 
 # **STATIC** puzzle targets (you can later swap these out for genSerial/genKeypad)
