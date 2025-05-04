@@ -67,8 +67,11 @@ def check_phases():
         # failure handling
         if phase._failed:
             handled_phases.add(phase)
+            # decrement strikes and choose strike image based on count
             strikes_left -= 1
-            show_image(strike_images[min(idx, len(strike_images)-1)])
+            strike_count = NUM_STRIKES - strikes_left  # e.g. 1 for first strike
+            img_idx = min(strike_count - 1, len(strike_images) - 1)
+            show_image(strike_images[img_idx])
 
             def resume():
                 global strikes_left, handled_phases, keypad, toggles, wires, button
@@ -84,7 +87,7 @@ def check_phases():
                         toggles = Toggles(component_toggles, "1010")
                         toggles.start()
                     elif idx == 2:
-                        wires   = Wires(component_wires, "01010")        # toggles reversed pattern
+                        wires = Wires(component_wires, "01010")
                         wires.start()
                     else:
                         button = Button(
@@ -99,6 +102,7 @@ def check_phases():
                     gui.conclusion(success=False)
 
             window.after(5000, resume)
+            return
             return
 
         # defuse handling
