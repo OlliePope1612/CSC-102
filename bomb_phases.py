@@ -91,11 +91,12 @@ class Wires(PhaseThread):
 
 # Button phase: press+release to defuse (or used as submitter for other puzzles)
 class Button(PhaseThread):
-    def __init__(self, state_pin, rgb_pins, target, timer):
+    def __init__(self, state_pin, rgb_pins, target, color, timer):
         super().__init__(state_pin, target)
         self._rgb     = rgb_pins
         self._timer   = timer
         self._pressed = False
+        self._color = color
     def run(self):
         # turn on all RGB channels initially
         for p in self._rgb: p.value = False
