@@ -62,7 +62,6 @@ class Lcd(Frame):
         # clear all
         for w in self.winfo_children():
             w.destroy()
-            self.show_images.destroy()
         # banner
         msg   = "DEFUSED!" if success else "BOOM!"
         color = "#00ff00" if success else "#ff0000"
