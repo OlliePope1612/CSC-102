@@ -80,10 +80,108 @@ class WiresPhase(PhaseThread):
     def display(self):
         return "".join("1" if w.is_cut() else "0" for w in self.comp)
 
-# TogglesPhase is identical to WiresPhase but reads toggle pins
-# ButtonPhase you’d implement similarly—either defuse on timing match
-# or route “submit” to Wires/Toggles if it’s in that sub-state.
+class Toggles(Phase):
+    def __init__(self, component, target):
+        super().__init__(target)
+        self.comp = component
 
+    def read(self):
+        # nothing automatic—defusal only on explicit submit via ButtonPhase
+        pass
+
+    def submit(self):
+        # build current bitstring
+        bits = "".join(
+            "1"
+            if (pin.read() if hasattr(pin, "read") else pin.value)
+            else "0"
+            for pin in self.comp
+        )
+        if bits == self.target:
+            self.defuse()
+        else:
+            self.fail()
+
+    def display(self):
+        # always show live switch positions
+        return "".join(
+            "1"
+            if (pin.read() if hasattr(pin, "read") else pin.value)
+            else "0"
+            for pin in self.comp
+        )
+
+
+class Button(Phase):
+    COLORS = ["R", "G", "B"]  # cycle order
+
+    def __init__(self, state_pin, rgb_pins, target, initial_color, timer_phase, submit_phases=()):
+        """
+        state_pin     -- the DigitalInOut pushbutton input (.value True/False)
+        rgb_pins      -- list of three RGB output pins (.value False=on/True=off)
+        target        -- digit to match on release (or None to always defuse)
+        initial_color -- one of "R","G","B"
+        timer_phase   -- your TimerPhase instance (to inspect its .value)
+        submit_phases -- tuple of (WiresPhase, TogglesPhase) to submit when blue
+        """
+        super().__init__(target)
+        self.state  = state_pin
+        self.rgb    = rgb_pins
+        self.timer  = timer_phase
+        self._submit = submit_phases
+
+        # cycling state
+        self.color_index = ButtonPhase.COLORS.index(initial_color)
+        self.last_cycle  = time.time()
+
+        # press detection
+        self._pressed = False
+
+        # light starting color
+        self._apply_color(initial_color)
+
+    def _apply_color(self, c):
+        # False => LED on; True => LED off
+        self.rgb[0].value = (c != "R")
+        self.rgb[1].value = (c != "G")
+        self.rgb[2].value = (c != "B")
+
+    def read(self):
+        now = time.time()
+        # cycle every 10 seconds
+        if now - self.last_cycle >= 10:
+            self.last_cycle = now
+            self.color_index = (self.color_index + 1) % len(ButtonPhase.COLORS)
+            self._apply_color(ButtonPhase.COLORS[self.color_index])
+
+        v = self.state.value
+        # detect press
+        if v and not self._pressed:
+            self._pressed = True
+        # detect release
+        if not v and self._pressed:
+            self._pressed = False
+
+            current_color = ButtonPhase.COLORS[self.color_index]
+            if current_color == "B":
+                # “submit” Wires & Toggles
+                for phase in self._submit:
+                    phase.submit()
+            else:
+                # defuse/release puzzle
+                # look at last timer‐seconds digit
+                sec = self.timer.value % 60
+                last_digit = sec % 10
+                if (self.target is None) or (last_digit == int(self.target)):
+                    self.defuse()
+                else:
+                    self.fail()
+
+    def display(self):
+        if self.defused:
+            return "DEFUSED"
+        return "Pressed" if self.state.value else "Released"
+        
 # --- main application ---
 
 class BombApp:
