@@ -1,28 +1,26 @@
-#!/usr/bin/env python3
 """
 bomb.py
-Entry point for the Family Guy–themed Defuse the Bomb game using bomb_configs and bomb_phases.
+Entry point for the Defuse the Bomb game with randomized imagery per phase.
 """
 import sys
+import random
 from tkinter import Tk, Toplevel, Label
 from PIL import Image, ImageTk
 from bomb_configs import *       # hardware setup & random targets
 from bomb_phases import Timer, Keypad, Wires, Toggles, Button, Lcd
 
-# --- Asset paths for Family Guy theme ---
-CHALLENGE_IMAGES = [
-    "KEYPAD.jpeg",
-    "WIRES.jpeg",
-    "TOGGLES.jpeg",
-    "BUTTON.jpeg",
-]
+# --- Image pools for each phase; one is chosen at random at game start ---
+keypad_images = ["KEYPAD1.jpeg", "KEYPAD2.jpeg", "KEYPAD3.jpeg", "KEYPAD4.jpeg"]
+wires_images  = ["WIRES1.jpeg",  "WIRES2.jpeg",  "WIRES3.jpeg",  "WIRES4.jpeg"]
+toggles_images= ["TOGGLES1.jpeg","TOGGLES2.jpeg","TOGGLES3.jpeg","TOGGLES4.jpeg"]
+button_images = ["BUTTON1.jpeg","BUTTON2.jpeg","BUTTON3.jpeg","BUTTON4.jpeg"]
+
 STRIKE_IMAGES = [
     "STRIKE1.jpeg",
     "STRIKE2.jpeg",
     "STRIKE3.jpeg",
     "STRIKE4.jpeg",
 ]
-
 
 # Globals for image popups
 global_window = None
@@ -36,114 +34,144 @@ def show_image(path):
         try: img_window.destroy()
         except: pass
     img_window = Toplevel(global_window)
-    img_window.attributes("-fullscreen")  # or "1280x800", "1920x1080", etc.
-    #img_window.pack(fill="both", expand=True)
-    #gui = Lcd(window)
-    #gui.pack(fill="both", expand=True)
-    #gui.after(1000, bootup)
-    
-    img_window.resizable(False, False)
-    w = global_window.winfo_screenwidth() - 100
-    h = global_window.winfo_screenheight() - 100
-    img = Image.open(path).resize((w, h), Image.LANCZOS)
+    img_window.attributes('-fullscreen', True)
+    # scale to fit screen
+    screen_w = global_window.winfo_screenwidth()
+    screen_h = global_window.winfo_screenheight()
+    img = Image.open(path)
+    iw, ih = img.size
+    scale = min(screen_w/iw, screen_h/ih)
+    img = img.resize((int(iw*scale), int(ih*scale)), Image.LANCZOS)
     img_photo = ImageTk.PhotoImage(img)
-    Label(img_window, image=img_photo).pack(fill='both', expand=True)
+    lbl = Label(img_window, image=img_photo)
+    lbl.place(relx=0.5, rely=0.5, anchor='center')
 
 # End the game: win or lose
 def end_game(gui, success: bool):
-    img_window.destroy()
+    global img_window
+    if img_window:
+        try: img_window.destroy()
+        except: pass
     gui.conclude(success)
 
 # Main game loop
 def start_game(window, gui):
     gui.setup_game()
 
-    # Instantiate phases
-    timer   = Timer(component_7seg, COUNTDOWN)
-    keypad  = Keypad(component_keypad, correct_code)
-    wires   = Wires(component_wires, correct_wire)
-    toggles = Toggles(component_toggles, correct_switch_pattern)
-    button  = Button(component_button_state,
-                     component_button_RGB,
-                     button_color,
-                     button_target,
-                     timer)
-    original = button._original_color
-    
-    
-    # Link with GUI
+    # Start the shared countdown timer
+    timer = Timer(component_7seg, COUNTDOWN)
     gui.set_timer(timer)
-    gui.set_button(button)
-
-    # Start all threads
     timer.start()
-    for phase in (keypad, wires, toggles, button):
-        phase.start()
+
+    # Helper to randomly pick image+target and instantiate a phase
+    phase_images = [None]*4
+    phases = []
+    def create_phase(idx):
+        if idx == 0:
+            # Keypad phase
+            r = random.randrange(len(keypad_images))
+            phase_images[0] = keypad_images[r]
+            return Keypad(component_keypad, correct_code[r])
+        elif idx == 1:
+            # Wires phase
+            r = random.randrange(len(wires_images))
+            phase_images[1] = wires_images[r]
+            return Wires(component_wires, correct_wire[r])
+        elif idx == 2:
+            # Toggles phase
+            r = random.randrange(len(toggles_images))
+            phase_images[2] = toggles_images[r]
+            return Toggles(component_toggles, correct_switch_pattern[r])
+        else:
+            # Button phase: random presses target for each play
+            r = random.randrange(len(button_images))
+            phase_images[3] = button_images[r]
+            target = random.randint(1, len(button_images))
+            btn = Button(component_button_state,
+                         component_button_RGB,
+                         button_color,
+                         target,
+                         timer)
+            gui.set_button(btn)
+            return btn
+
+    # Create and start the first interactive phase
+    current = 0
+    phase = create_phase(0)
+    phases.append(phase)
+    phase.start()
+    show_image(phase_images[0])
 
     strikes = NUM_STRIKES
-    current = 0
-    phases_list = [keypad, wires, toggles, button]
 
-    def show_phase(idx):
-        # only display if index is valid
-        if 0 <= idx < len(CHALLENGE_IMAGES):
-            show_image(CHALLENGE_IMAGES[idx])
-
+    # Controller: polls timer + current phase
     def controller():
-        nonlocal strikes, current
-                # Timer expired?
+        nonlocal current, strikes, phase
+        # Timer expired?
         if timer._failed:
-            timer._running = False   # stop the background timer thread
+            timer._running = False
             return end_game(gui, False)
 
-        
-        # switch button LED color for submission phases
-        if current == 3:
-            button.set_color('B')
-        else:
-            button.set_color(original)
-
-        ph = phases_list[current]
-        
-        # Phase failure?
+        ph = phase
+        # Failure in this phase?
         if ph._failed:
-            if strikes == 1 or strikes == 2:
-                show_image(STRIKE_IMAGES[strikes-1])
-            else:
-                show_image(STRIKE_IMAGES[strikes-2])
             strikes -= 1
+            idx = min(NUM_STRIKES - strikes - 1, len(STRIKE_IMAGES)-1)
+            show_image(STRIKE_IMAGES[idx])
             ph._failed = False
             if strikes <= 0:
                 return end_game(gui, False)
-            # retry same phase
-            window.after(2000, lambda: show_phase(current))
+            # restart same phase after a delay
+            window.after(2000, lambda: show_image(phase_images[current]))
             window.after(200, controller)
             return
 
-                # Phase success?
+        # Success in this phase?
         if ph._defused:
-            button.set_color('G')
-            window.after(2000, lambda: button.set_color(original))
             current += 1
-            if current >= len(phases_list):
-                timer._running = False   # stop the timer here too
+            if current >= 4:
+                timer._running = False
                 return end_game(gui, True)
-            window.after(500, lambda idx=current: show_phase(idx))
+            # set up next phase
+            phase = create_phase(current)
+            phases.append(phase)
+            phase.start()
+            window.after(500, lambda: show_image(phase_images[current]))
             window.after(200, controller)
             return
 
-        # Update the HUD
-        gui.update(keypad, wires, toggles, button, strikes)
+        # Update HUD and continue polling
+        gui.update(phases[0] if current>0 else phase,
+                   phases[1] if current>1 else phase,
+                   phases[2] if current>2 else phase,
+                   phase,
+                   strikes)
         window.after(100, controller)
 
-    # launch first image and controller
-    show_phase(0)
+    # Kick off the controller loop
     window.after(100, controller)
 
 # Entry point
 def main():
     global global_window
     global_window = Tk()
+    global_window.state('zoomed')
+    gui = Lcd(global_window)
+    if ANIMATE:
+        gui.after(200, gui.setup_boot)
+        gui.after(len(boot_text)*30 + 500, start_game, global_window, gui)
+    else:
+        start_game(global_window, gui)
+    global_window.mainloop()
+
+# run
+if __name__ == '__main__':
+    main()
+# Entry point
+def main():
+    global global_window
+    global_window = Tk()
+    global_window.state('zoomed')  # maximize window
     gui = Lcd(global_window)
 
     # Boot animation, then start
@@ -157,3 +185,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
