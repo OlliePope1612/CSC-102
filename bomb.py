@@ -1,192 +1,172 @@
-#################################
-# CSC 102 Defuse the Bomb Project
-# Main program
-# Team: 
-#################################
+from tkinter import Tk, Toplevel, Label
+from PIL import Image, ImageTk
+from bomb_configs import *        # hardware components & constants
+from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd
 
-# import the configs
-from bomb_configs import *
-# import the phases
-from bomb_phases import *
+# File names for images
+challenge_images = [
+    "KEYPAD.jpeg",  # keypad challenge
+    "TOGGLES.jpeg",     # toggles challenge
+    "WIRES.jpeg",     # wires challenge
+    "BUTTON.jpeg",     # button challenge
+]
+strike_images = [
+    "STRIKE1.jpeg",
+    "STRIKE2.jpeg",
+    "STRIKE3.jpeg",
+    "STRIKE4.jpeg",
+]
+game_over_image = "DEFUSED.jpeg"
+win_image       = "FAILURE.jpeg"
 
-###########
-# functions
-###########
-# generates the bootup sequence on the LCD
-def bootup(n=0):
-    # if we're not animating (or we're at the end of the bootup text)
-    if (not ANIMATE or n == len(boot_text)):
-        # if we're not animating, render the entire text at once (and don't process \x00)
-        if (not ANIMATE):
-            gui._lscroll["text"] = boot_text.replace("\x00", "")
-        # configure the remaining GUI widgets
-        gui.setup()
-        # setup the phase threads, execute them, and check their statuses
-        if (RPi):
-            setup_phases()
-            check_phases()
-    # if we're animating
-    else:
-        # add the next character (but don't render \x00 since it specifies a longer pause)
-        if (boot_text[n] != "\x00"):
-            gui._lscroll["text"] += boot_text[n]
+# Globals for image window
+img_window = None
+img_photo  = None
 
-        # scroll the next character after a slight delay (\x00 is a longer delay)
-        gui.after(25 if boot_text[n] != "\x00" else 750, bootup, n + 1)
+# Helper: display fullscreen image
+def show_image(path):
+    global img_window, img_photo
+    try:
+        img_window.destroy()
+    except:
+        pass
+    img_window = Toplevel(window)
+    img_window.attributes('-fullscreen', True)
+    img_window.lift()
+    img_window.focus_force()
+    screen_w = window.winfo_screenwidth()
+    screen_h = window.winfo_screenheight()
+    img = Image.open(path).resize((screen_w, screen_h), Image.LANCZOS)
+    img_photo = ImageTk.PhotoImage(img)
+    lbl = Label(img_window, image=img_photo)
+    lbl.pack(fill='both', expand=True)
 
-# sets up the phase threads
-def setup_phases():
-    global timer, keypad, wires, button, toggles
-    
-    # setup the timer thread
-    timer = Timer(component_7seg, COUNTDOWN)
-    # bind the 7-segment display to the LCD GUI so that it can be paused/unpaused from the GUI
-    gui.setTimer(timer)
-    # setup the keypad thread
-    keypad = Keypad(component_keypad, keypad_target)
-    # setup the jumper wires thread
-    wires = Wires(component_wires, wires_target)
-    # setup the pushbutton thread
-    button = Button(component_button_state, component_button_RGB, button_target, button_color, timer)
-    # bind the pushbutton to the LCD GUI so that its LED can be turned off when we quit
-    gui.setButton(button)
-    # setup the toggle switches thread
-    toggles = Toggles(component_toggles, toggles_target)
-
-    # start the phase threads
-    timer.start()
-    keypad.start()
-    wires.start()
-    button.start()
-    toggles.start()
-
-# checks the phase threads
+# Core logic: monitor phases
 def check_phases():
-    global active_phases
-    
-    # check the timer
-    if (timer._running):
-        # update the GUI
-        gui._ltimer["text"] = f"Time left: {timer}"
+    global strikes_left, active_phases, handled_phases
+    # update LCD labels
+    for attr, phase in [
+        ("_ltimer", timer), ("_lkeypad", keypad),
+        ("_ltoggles", toggles), ("_lwires", wires), ("_lbutton", button)
+    ]:
+        try:
+            getattr(gui, attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
+        except:
+            pass
+    try:
+        gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+    except:
+        pass
+
+    # iterate in order: keypad, toggles, wires, button
+    for idx, phase in enumerate((keypad, toggles, wires, button)):
+        # skip if already handled
+        if phase in handled_phases:
+            continue
+
+        # failure handling
+        if phase._failed:
+            handled_phases.add(phase)
+            # decrement strikes and choose strike image based on count
+            strikes_left -= 1
+            strike_count = NUM_STRIKES - strikes_left  # e.g. 1 for first strike
+            img_idx = min(strike_count - 1, len(strike_images) - 1)
+            show_image(strike_images[img_idx])
+
+            def resume():
+                global strikes_left, handled_phases, keypad, toggles, wires, button
+                if strikes_left > 0:
+                    # retry same challenge
+                    show_image(challenge_images[idx])
+                    handled_phases.discard(phase)
+                    # recreate and restart thread
+                    if idx == 0:
+                        keypad = Keypad(component_keypad, "1999")
+                        keypad.start()
+                    elif idx == 1:
+                        toggles = Toggles(component_toggles, "1010")
+                        toggles.start()
+                    elif idx == 2:
+                        wires = Wires(component_wires, "01010")
+                        wires.start()
+                    else:
+                        button = Button(
+                            component_button_state,
+                            component_button_RGB,
+                            button_target, button_color, timer
+                        )
+                        button.start()
+                    window.after(100, check_phases)
+                else:
+                    show_image(game_over_image)
+                    gui.conclusion(success=False)
+
+            window.after(5000, resume)
+            return
+            return
+
+        # defuse handling
+        if phase._defused:
+            handled_phases.add(phase)
+            active_phases -= 1
+            # next challenge or win
+            if idx < len(challenge_images) - 1:
+                show_image(challenge_images[idx + 1])
+                window.after(100, check_phases)
+            else:
+                show_image(win_image)
+                gui.conclusion(success=True)
+            return
+
+    # continue polling if no state change
+    window.after(100, check_phases)
+
+# Initialize and start all phases
+def setup_phases():
+    global timer, keypad, toggles, wires, button, strikes_left, active_phases, handled_phases
+    strikes_left  = NUM_STRIKES
+    active_phases = NUM_PHASES
+    handled_phases = set()
+
+    timer   = Timer(component_7seg, COUNTDOWN)
+    keypad  = Keypad(component_keypad, "1999")       # hard-coded
+    toggles = Toggles(component_toggles, "1010")     # hard-coded
+    wires   = Wires(component_wires, "10101")        # odd-numbered wires
+    button  = Button(
+        component_button_state,
+        component_button_RGB,
+        button_target, button_color, timer
+    )
+
+    gui.setTimer(timer)
+    gui.setButton(button)
+
+    for phase in (timer, keypad, toggles, wires, button):
+        phase.start()
+
+    # show first challenge image
+    show_image(challenge_images[0])
+
+# Boot sequence
+def bootup(n=0):
+    if not ANIMATE or n >= len(boot_text):
+        gui.setup()
     else:
-        # the countdown has expired -> explode!
-        # turn off the bomb and render the conclusion GUI
-        turn_off()
-        gui.after(100, gui.conclusion, False)
-        # don't check any more phases
-        return
-    # check the keypad
-    if (keypad._running):
-        # update the GUI
-        gui._lkeypad["text"] = f"Combination: {keypad}"
-        # the phase is defused -> stop the thread
-        if (keypad._defused):
-            keypad._running = False
-            active_phases -= 1
-        # the phase has failed -> strike
-        elif (keypad._failed):
-            strike()
-            # reset the keypad
-            keypad._failed = False
-            keypad._value = ""
-    # check the wires
-    if (wires._running):
-        # update the GUI
-        gui._lwires["text"] = f"Wires: {wires}"
-        # the phase is defused -> stop the thread
-        if (wires._defused):
-            wires._running = False
-            active_phases -= 1
-        # the phase has failed -> strike
-        elif (wires._failed):
-            strike()
-            # reset the wires
-            wires._failed = False
-    # check the button
-    if (button._running):
-        # update the GUI
-        gui._lbutton["text"] = f"Button: {button}"
-        # the phase is defused -> stop the thread
-        if (button._defused):
-            button._running = False
-            active_phases -= 1
-        # the phase has failed -> strike
-        elif (button._failed):
-            strike()
-            # reset the button
-            button._failed = False
-    # check the toggles
-    if (toggles._running):
-        # update the GUI
-        gui._ltoggles["text"] = f"Toggles: {toggles}"
-        # the phase is defused -> stop the thread
-        if (toggles._defused):
-            toggles._running = False
-            active_phases -= 1
-        # the phase has failed -> strike
-        elif (toggles._failed):
-            strike()
-            # reset the toggles
-            toggles._failed = False
+        if boot_text[n] != "\x00":
+            gui._lscroll["text"] += boot_text[n]
+        delay = 25 if boot_text[n] != "\x00" else 750
+        gui.after(delay, bootup, n+1)
 
-    # note the strikes on the GUI
-    gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
-    # too many strikes -> explode!
-    if (strikes_left == 0):
-        # turn off the bomb and render the conclusion GUI
-        turn_off()
-        gui.after(1000, gui.conclusion, False)
-        # stop checking phases
-        return
+# Start game
+def start_game():
+    gui.setup()
+    setup_phases()
+    window.after(100, check_phases)
 
-    # the bomb has been successfully defused!
-    if (active_phases == 0):
-        # turn off the bomb and render the conclusion GUI
-        turn_off()
-        gui.after(100, gui.conclusion, True)
-        # stop checking phases
-        return
-
-    # check the phases again after a slight delay
-    gui.after(100, check_phases)
-
-# handles a strike
-def strike():
-    global strikes_left
-    
-    # note the strike
-    strikes_left -= 1
-
-# turns off the bomb
-def turn_off():
-    # stop all threads
-    timer._running = False
-    keypad._running = False
-    wires._running = False
-    button._running = False
-    toggles._running = False
-
-    # turn off the 7-segment display
-    component_7seg.blink_rate = 0
-    component_7seg.fill(0)
-    # turn off the pushbutton's LED
-    for pin in button._rgb:
-        pin.value = True
-
-######
 # MAIN
-######
-
-# initialize the LCD GUI
 window = Tk()
 gui = Lcd(window)
-
-# initialize the bomb strikes and active phases (i.e., not yet defused)
-strikes_left = NUM_STRIKES
-active_phases = NUM_PHASES
-
-# "boot" the bomb
 gui.after(1000, bootup)
-
-# display the LCD GUI
+boot_duration = 1000 + len(boot_text) * 50
+gui.after(boot_duration, start_game)
 window.mainloop()
