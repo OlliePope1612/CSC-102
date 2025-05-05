@@ -1,261 +1,212 @@
+"""
+bomb_phases.py
+Defines PhaseThread base class and concrete phase subclasses:
+Timer, Keypad, Wires, Toggles, Button, and the Lcd GUI frame.
+"""
 import time
-from tkinter import Tk
+from threading import Thread
+from tkinter import Frame, Label
+from PIL import Image, ImageTk
+from bomb_configs import *
 
-# --- phase base class ---
-class Phase:
-    def __init__(self, target):
-        self.target = target
-        self.defused = False
-        self.failed  = False
-
-    def read(self):
-        """Override to sample hardware/input; should call self.defuse() or self.fail() as needed."""
-        pass
-
-    def display(self):
-        """Return the string to show on the LCD for this phase."""
-        return "DEFUSED" if self.defused else "????"
-
-    def defuse(self):
-        if not self.defused:
-            self.defused = True
-
-    def fail(self):
-        if not self.failed:
-            self.failed = True
-
-# --- concrete phases ---
-class TimerPhase(Phase):
-    def __init__(self, component, start_secs):
-        super().__init__(None)
-        self.comp   = component
-        self.value  = start_secs
-        self.last_t = time.time()
-
-    def read(self):
-        now = time.time()
-        if now - self.last_t >= 1:
-            self.value -= 1
-            self.last_t = now
-            self.comp.print(f"{self.value//60:02d}:{self.value%60:02d}")
-            if self.value < 0:
-                self.fail()
-
-    def display(self):
-        return f"{self.value//60:02d}:{self.value%60:02d}"
-
-class KeypadPhase(Phase):
-    def __init__(self, component, target):
-        super().__init__(target)
-        self.comp  = component
-        self.value = ""
-
-    def read(self):
-        if self.comp.pressed_keys:
-            k = str(self.comp.pressed_keys[0])
-            while self.comp.pressed_keys: pass  # simple debounce
-            if k == "*":
-                self.value = ""
-            elif k == "#":
-                (self.defuse if self.value == self.target else self.fail)()
-            elif len(self.value) < len(self.target):
-                self.value += k
-
-    def display(self):
-        return "DEFUSED" if self.defused else self.value
-
-class WiresPhase(Phase):
-    def __init__(self, component, target):
-        super().__init__(target)
-        self.comp = component
-
-    def read(self):
-        # nothing to do until user presses “submit” on the button
-        pass
-
-    def submit(self):
-        bits = "".join("1" if w.is_cut() else "0" for w in self.comp)
-        (self.defuse if bits == self.target else self.fail)()
-
-    def display(self):
-        return "".join("1" if w.is_cut() else "0" for w in self.comp)
-
-import time
-
-class TogglesPhase(Phase):
-    def __init__(self, component, target):
-        """
-        component: list of GPIO-toggle pins (with .read() → 0/1 or .value)
-        target:    bitstring, e.g. "1010"
-        """
-        super().__init__(target)
-        self.comp = component
-
-    def read(self):
-        # nothing automatic—defusal only on explicit submit via ButtonPhase
-        pass
-
-    def submit(self):
-        # build current bitstring
-        bits = "".join(
-            "1"
-            if (pin.read() if hasattr(pin, "read") else pin.value)
-            else "0"
-            for pin in self.comp
-        )
-        if bits == self.target:
-            self.defuse()
+##### GUI / LCD #####
+class Lcd(Frame):
+    def __init__(self, master):
+        super().__init__(master, bg="black")
+        master.attributes("-fullscreen", True)
+        self._timer = None
+        self._button = None
+        self.pack(fill='both', expand=True)
+        if ANIMATE:
+            self._boot_label = Label(self, bg="black", fg="white", font=("Courier", 14), justify='left')
+            self._boot_label.pack(anchor='nw', padx=20, pady=20)
         else:
-            self.fail()
+            self.setup_game()
 
-    def display(self):
-        # always show live switch positions
-        return "".join(
-            "1"
-            if (pin.read() if hasattr(pin, "read") else pin.value)
-            else "0"
-            for pin in self.comp
-        )
-
-
-class ButtonPhase(Phase):
-    COLORS = ["R", "G", "B"]  # cycle order
-
-    def __init__(self, state_pin, rgb_pins, target, initial_color, timer_phase, submit_phases=()):
-        """
-        state_pin     -- the DigitalInOut pushbutton input (.value True/False)
-        rgb_pins      -- list of three RGB output pins (.value False=on/True=off)
-        target        -- digit to match on release (or None to always defuse)
-        initial_color -- one of "R","G","B"
-        timer_phase   -- your TimerPhase instance (to inspect its .value)
-        submit_phases -- tuple of (WiresPhase, TogglesPhase) to submit when blue
-        """
-        super().__init__(target)
-        self.state  = state_pin
-        self.rgb    = rgb_pins
-        self.timer  = timer_phase
-        self._submit = submit_phases
-
-        # cycling state
-        self.color_index = ButtonPhase.COLORS.index(initial_color)
-        self.last_cycle  = time.time()
-
-        # press detection
-        self._pressed = False
-
-        # light starting color
-        self._apply_color(initial_color)
-
-    def _apply_color(self, c):
-        # False => LED on; True => LED off
-        self.rgb[0].value = (c != "R")
-        self.rgb[1].value = (c != "G")
-        self.rgb[2].value = (c != "B")
-
-    def read(self):
-        now = time.time()
-        # cycle every 10 seconds
-        if now - self.last_cycle >= 10:
-            self.last_cycle = now
-            self.color_index = (self.color_index + 1) % len(ButtonPhase.COLORS)
-            self._apply_color(ButtonPhase.COLORS[self.color_index])
-
-        v = self.state.value
-        # detect press
-        if v and not self._pressed:
-            self._pressed = True
-        # detect release
-        if not v and self._pressed:
-            self._pressed = False
-
-            current_color = ButtonPhase.COLORS[self.color_index]
-            if current_color == "B":
-                # “submit” Wires & Toggles
-                for phase in self._submit:
-                    phase.submit()
-            else:
-                # defuse/release puzzle
-                # look at last timer‐seconds digit
-                sec = self.timer.value % 60
-                last_digit = sec % 10
-                if (self.target is None) or (last_digit == int(self.target)):
-                    self.defuse()
-                else:
-                    self.fail()
-
-    def display(self):
-        if self.defused:
-            return "DEFUSED"
-        return "Pressed" if self.state.value else "Released"
-# --- main application ---
-
-class BombApp:
-    def __init__(self):
-        self.root = Tk()
-        # build your GUI here, stash your Label objects as self.lbl_timer, self.lbl_keypad, ...
-        # instantiate your five phases in order:
-        self.phases = [
-            TimerPhase(component_7seg, COUNTDOWN),
-            KeypadPhase(component_keypad, str(keypad_target)),
-            WiresPhase(component_wires,   bin(wires_target)[2:].zfill(5)),
-            TogglesPhase(component_toggles, bin(toggles_target)[2:].zfill(4)),
-            ButtonPhase(component_button_state, component_button_RGB, button_target, button_color)
-        ]
-        self.current = 0
-        self.strikes = NUM_STRIKES
-
-        # start the update loop
-        self.root.after(100, self.update)
-
-    def update(self):
-        # 1) Always tick the timer
-        self.phases[0].read()
-
-        # 2) For the current challenge (index 1–4), call .read()
-        #    so keypad polls, toggles simply updates display, etc.
-        if 1 <= self.current < len(self.phases):
-            self.phases[self.current].read()
-
-        # 3) Update all five labels:
-        self.lbl_timer .config(text=self.phases[0].display())
-        self.lbl_keypad.config(text=self.phases[1].display())
-        self.lbl_wires .config(text=self.phases[2].display())
-        self.lbl_toggle.config(text=self.phases[3].display())
-        self.lbl_button.config(text=self.phases[4].display())
-        self.lbl_strike.config(text=f"Strikes: {self.strikes}")
-
-        # 4) Check for any newly‐failed or newly‐defused phase:
-        for i, p in enumerate(self.phases):
-            if p.failed and i == self.current:
-                self.strikes -= 1
-                self.stomp()   # reset wires/toggles/keypad for retry
-            if p.defused and i == self.current:
-                self.current += 1
-                # if we’ve finished all phases, show “DEFUSED!” and stop
-                if self.current >= len(self.phases):
-                    self.show_banner(True)
-                    return
-
-        # 5) Boom if timer ran out or strikes ≤ 0
-        if self.phases[0].failed or self.strikes <= 0:
-            self.show_banner(False)
+    def setup_boot(self):
+        try:
+            self._boot_label.config(text="")
+        except:
             return
+        def step(i=0):
+            if not hasattr(self, '_boot_label'):
+                return
+            if i < len(boot_text):
+                try:
+                    self._boot_label['text'] += boot_text[i]
+                    self.after(30, step, i+1)
+                except:
+                    return
+        step()
 
-        # 6) Otherwise keep going
-        self.root.after(100, self.update)
+    def setup_game(self):
+        for w in self.winfo_children(): w.destroy()
+        font = ("Courier", 16, "bold")
+        self._ltime    = Label(self, text="Time: ", fg="#00FF00", bg="black", font=font)
+        self._lstrikes = Label(self, text=f"Strikes: {NUM_STRIKES}", fg="#00FF00", bg="black", font=font)
+        self._lkeypad  = Label(self, text="Keypad: ...", fg="#00FF00", bg="black", font=font)
+        self._lwires   = Label(self, text="Wires: ...", fg="#00FF00", bg="black", font=font)
+        self._ltoggles = Label(self, text="Toggles: ...", fg="#00FF00", bg="black", font=font)
+        self._lbutton  = Label(self, text="Button: ...", fg="#00FF00", bg="black", font=font)
+        for idx, lbl in enumerate((self._ltime, self._lstrikes,
+                                   self._lkeypad, self._lwires,
+                                   self._ltoggles, self._lbutton)):
+            lbl.place(relx=0.02, rely=0.1 + idx*0.12, anchor='nw')
 
-    def stomp(self):
-        # reset only the current phase’s pins or value
-        # e.g. clear keypad buffer, re‐uncut wires, re‐flip toggles
-        pass
+    def set_timer(self, timer): self._timer = timer
+    def set_button(self, button): self._button = button
 
-    def show_banner(self, defused):
-        # tear down the five‐label UI and show your “DEFUSED!” or “BOOM!” screen
-        pass
+    def update(self, keypad, wires, toggles, button, strikes):
+        if self._timer:
+            self._ltime['text'] = f"Time: {self._timer.as_mmss()}"
+        self._lstrikes['text'] = f"Strikes: {strikes}"
+        self._lkeypad['text'] = f"Keypad: {str(keypad)}"
+        self._lwires['text']   = f"Wires: {str(wires)}"
+        self._ltoggles['text']= f"Toggles: {str(toggles)}"
+        self._lbutton['text']  = f"Button: {str(button)}"
+
+    def conclude(self, success: bool):
+        for w in self.winfo_children(): w.destroy()
+        msg = ">>> DEFUSED <<<" if success else "!!! BOOM !!!"
+        color = "#00FF00" if success else "#FF0000"
+        Label(self, text=msg, fg=color, bg="black", font=("Courier", 32, "bold")).pack(expand=True)
+
+##### Phase base #####
+class PhaseThread(Thread):
+    def __init__(self, component, target):
+        super().__init__(daemon=True)
+        self._component = component
+        self._target    = str(target)
+        self._defused   = False
+        self._failed    = False
+        self._running   = True
+    def defuse(self):
+        self._defused = True
+        self._running = False
+    def fail(self):
+        self._failed = True
+        self._running = False
+    def __str__(self):
+        return "DEFUSED" if self._defused else "FAILED" if self._failed else "..."
+
+##### Timer Phase #####
+class Timer(PhaseThread):
+    def __init__(self, component, initial):
+        super().__init__(component, initial)
+        self._value = int(initial)
+    def run(self):
+        while self._running and self._value >= 0:
+            mins, secs = divmod(self._value, 60)
+            self._component.print(f"{mins:02d}:{secs:02d}")
+            time.sleep(1)
+            self._value -= 1
+        if self._value < 0:
+            self.fail()
+    def as_mmss(self):
+        m, s = divmod(max(self._value,0), 60)
+        return f"{m:02d}:{s:02d}"
+
+##### Keypad Phase #####
+class Keypad(PhaseThread):
+    def __init__(self, component, code):
+        super().__init__(component, code)
+        self._entry = ""
 
     def run(self):
-        self.root.mainloop()
+        last_key = None
+        while self._running and not self._defused:
+            keys = getattr(self._component, 'pressed_keys', [])
+            if keys:
+                key = str(keys[0])
+                # only act on a new press
+                if key != last_key:
+                    last_key = key
+                    if key == '*':
+                        # reset entry on star
+                        self._entry = ""
+                    elif key == '#':
+                        # submit on hash
+                        if self._entry == self._target:
+                            self.defuse()
+                            return
+                        else:
+                            self._failed = True
+                            # clear entry so user can retry
+                            self._entry = ""
+                    elif key.isdigit():
+                        # append digit
+                        self._entry += key
+            else:
+                # no keys pressed, reset last_key
+                last_key = None
+            time.sleep(0.05)
 
-# and in bomb.py:
-if __name__=="__main__":
-    BombApp().run()
+    def __str__(self):
+        return self._entry or "..."
+
+##### Wires Phase #####
+class Wires(PhaseThread):
+    def __init__(self, component, pattern):
+        super().__init__(component, pattern)
+    def run(self):
+        while self._running:
+            bits = []
+            for w in self._component:
+                if hasattr(w, 'is_cut'):
+                    val = w.is_cut()
+                elif hasattr(w, 'read'):
+                    val = bool(w.read())
+                else:
+                    val = bool(getattr(w, 'value', False))
+                bits.append('1' if val else '0')
+            current = ''.join(bits)
+            if current == self._target:
+                self.defuse()
+            time.sleep(0.1)
+    def __str__(self):
+        return ''.join('1' if (w.is_cut() if hasattr(w, 'is_cut') else bool(getattr(w, 'value', False))) else '0' for w in self._component)
+
+##### Toggles Phase #####
+class Toggles(PhaseThread):
+    def __init__(self, component, pattern):
+        super().__init__(component, pattern)
+    def run(self):
+        while self._running:
+            current = ''.join(str(int(pin.read() if hasattr(pin, 'read') else pin.value)) for pin in self._component)
+            if current == self._target:
+                self.defuse()
+            time.sleep(0.1)
+    def __str__(self):
+        return ''.join(str(int(pin.read() if hasattr(pin, 'read') else pin.value)) for pin in self._component)
+
+##### Button Phase #####
+class Button(PhaseThread):
+    def __init__(self, state_pin, rgb_pins, color, presses, timer):
+        super().__init__(state_pin, presses)
+        self._rgb            = rgb_pins
+        self._original_color = color
+        self._presses        = int(presses)
+        self._timer          = timer
+        self._count          = 0
+        self.set_color(color)
+
+    def set_color(self, color):
+        # store and light only that LED
+        self._color = color
+        for i, led in enumerate(self._rgb):
+            led.value = (['R','G','B'][i] != color)
+
+    def run(self):
+        while self._running:
+            if self._component.value:
+                # wait for release
+                while self._component.value:
+                    time.sleep(0.05)
+                self._count += 1
+                if self._count >= self._presses:
+                    self.defuse()
+            time.sleep(0.1)
+    def __str__(self):
+        return f"{self._count}/{self._presses}"
+
+
