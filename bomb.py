@@ -6,28 +6,22 @@ from bomb_phases import Timer, Keypad, Wires, Button, Toggles, Lcd
 # File names for images
 challenge_images = [
     "KEYPAD.jpeg",  # keypad challenge
-    "TOGGLES.jpeg", # toggles challenge
-    "WIRES.jpeg",   # wires challenge
-    "BUTTON.jpeg",  # button challenge
-    "TOGGLES.jpeg", # toggles challenge
-    "WIRES.jpeg",   # wires challenge
-    "BUTTON.jpeg",  # button challenge
+    "TOGGLES.jpeg",     # toggles challenge
+    "WIRES.jpeg",     # wires challenge
+    "BUTTON.jpeg",     # button challenge
 ]
-
 strike_images = [
     "STRIKE1.jpeg",
     "STRIKE2.jpeg",
     "STRIKE3.jpeg",
     "STRIKE4.jpeg",
 ]
-
-# Swap so game over shows FAILURE, win shows DEFUSED
-game_over_image = "FAILURE.jpeg"
-win_image = "DEFUSED.jpeg"
+game_over_image = "DEFUSED.jpeg"
+win_image       = "FAILURE.jpeg"
 
 # Globals for image window
 img_window = None
-img_photo = None
+img_photo  = None
 
 # Helper: display fullscreen image
 def show_image(path):
@@ -50,7 +44,6 @@ def show_image(path):
 # Core logic: monitor phases
 def check_phases():
     global strikes_left, active_phases, handled_phases
-
     # update LCD labels
     for attr, phase in [
         ("_ltimer", timer), ("_lkeypad", keypad),
@@ -60,14 +53,13 @@ def check_phases():
             getattr(gui, attr)["text"] = f"{attr[2:].replace('_',' ').title()}: {phase}"
         except:
             pass
-
     try:
         gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
     except:
         pass
 
     # iterate in order: keypad, toggles, wires, button
-    for i, phase in enumerate((keypad, toggles, wires, button)):
+    for idx, phase in enumerate((keypad, toggles, wires, button)):
         # skip if already handled
         if phase in handled_phases:
             continue
@@ -75,36 +67,35 @@ def check_phases():
         # failure handling
         if phase._failed:
             handled_phases.add(phase)
+            # decrement strikes and choose strike image based on count
             strikes_left -= 1
-            strike_count = NUM_STRIKES - strikes_left
-            img_i = min(strike_count - 1, len(strike_images) - 1)
-            show_image(strike_images[img_i])
+            strike_count = NUM_STRIKES - strikes_left  # e.g. 1 for first strike
+            img_idx = min(strike_count - 1, len(strike_images) - 1)
+            show_image(strike_images[img_idx])
 
             def resume():
                 global strikes_left, handled_phases, keypad, toggles, wires, button
                 if strikes_left > 0:
-                    show_image(challenge_images[i])
+                    # retry same challenge
+                    show_image(challenge_images[idx])
                     handled_phases.discard(phase)
-
-                    if i == 0:
+                    # recreate and restart thread
+                    if idx == 0:
                         keypad = Keypad(component_keypad, "1999")
                         keypad.start()
-                    elif i == 1:
+                    elif idx == 1:
                         toggles = Toggles(component_toggles, "1010")
                         toggles.start()
-                    elif i == 2:
+                    elif idx == 2:
                         wires = Wires(component_wires, "01010")
                         wires.start()
                     else:
                         button = Button(
                             component_button_state,
                             component_button_RGB,
-                            button_target,
-                            button_color,
-                            timer
+                            button_target, button_color, timer
                         )
                         button.start()
-
                     window.after(100, check_phases)
                 else:
                     show_image(game_over_image)
@@ -112,21 +103,20 @@ def check_phases():
 
             window.after(5000, resume)
             return
+            return
 
         # defuse handling
         if phase._defused:
             handled_phases.add(phase)
             active_phases -= 1
-            if i < len(challenge_images) - 1:
-                show_image(challenge_images[i + 1])
+            # next challenge or win
+            if idx < len(challenge_images) - 1:
+                show_image(challenge_images[idx + 1])
                 window.after(100, check_phases)
             else:
                 show_image(win_image)
                 gui.conclusion(success=True)
             return
-
-    if not timer._running:
-        gui.conclusion(success=False)
 
     # continue polling if no state change
     window.after(100, check_phases)
@@ -134,22 +124,18 @@ def check_phases():
 # Initialize and start all phases
 def setup_phases():
     global timer, keypad, toggles, wires, button, strikes_left, active_phases, handled_phases
-
-    strikes_left = NUM_STRIKES
+    strikes_left  = NUM_STRIKES
     active_phases = NUM_PHASES
     handled_phases = set()
 
-    timer = Timer(component_7seg, COUNTDOWN)
-    keypad = Keypad(component_keypad, "1999")
-    toggles = Toggles(component_toggles, "1010")
-    wires = Wires(component_wires, "10101")
-    button = Button(
+    timer   = Timer(component_7seg, COUNTDOWN)
+    keypad  = Keypad(component_keypad, "1999")       # hard-coded
+    toggles = Toggles(component_toggles, "1010")     # hard-coded
+    wires   = Wires(component_wires, "10101")        # odd-numbered wires
+    button  = Button(
         component_button_state,
         component_button_RGB,
-        button_target,
-        button_color,
-        timer,
-        submit_phases=(toggles, wires)
+        button_target, button_color, timer
     )
 
     gui.setTimer(timer)
