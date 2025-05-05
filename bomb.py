@@ -36,7 +36,13 @@ def show_image(path):
         try: img_window.destroy()
         except: pass
     img_window = Toplevel(global_window)
-    img_window.attributes('-fullscreen', True)
+    img_window.attributes("-fullscreen")  # or "1280x800", "1920x1080", etc.
+    #img_window.pack(fill="both", expand=True)
+    #gui = Lcd(window)
+    #gui.pack(fill="both", expand=True)
+    #gui.after(1000, bootup)
+    
+    img_window.resizable(False, False)
     w = global_window.winfo_screenwidth() - 100
     h = global_window.winfo_screenheight() - 100
     img = Image.open(path).resize((w, h), Image.LANCZOS)
@@ -151,4 +157,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
