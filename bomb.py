@@ -11,7 +11,8 @@ from bomb_phases import *
 import shutil, subprocess
 from pygame import mixer
 
-strikes_left = 0
+# Global variables
+strikes_left = 0  # Will be initialized from NUM_STRIKES
 
 STRIKE_IMAGES = [
     "STRIKE1.jpeg",
@@ -62,18 +63,17 @@ def end_game(gui, success: bool):
         mixer.music.play()
     gui.conclude(success)
 
-def update_gui(gui, strikes_left):
-    gui_lstrikes["text"] = f"Strikes left: {strikes_left}"
-    strikes_left -= 1
-    root.after(100, lambda: update_gui(gui, strikes_left))
-    
-def update_strikes():
+def update_strikes(gui):
+    global strikes_left
     gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
         
 # Main game loop
 def start_game(window, gui):
     global random_button_time
     global strikes_left
+    
+    # Initialize strikes from imported NUM_STRIKES
+    strikes_left = NUM_STRIKES
 
     gui.setup_game()
 
@@ -92,6 +92,7 @@ def start_game(window, gui):
             r = random.randrange(len(keypad_images))
             r_sound = keypad_audio[r]
             phase_images[0] = keypad_images[r]
+            phase_audio[0] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
@@ -100,19 +101,21 @@ def start_game(window, gui):
             # Wires phase
             r = random.randrange(len(wires_images))
             r_sound = wires_audio[r]
+            phase_images[1] = wires_images[r]
+            phase_audio[1] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
-            phase_images[1] = wires_images[r]
             return Wires(component_wires, correct_wire[r])
         elif i == 2:
             # Toggles phase
             r = random.randrange(len(toggles_images))
             r_sound = toggles_audio[r]
+            phase_images[2] = toggles_images[r]
+            phase_audio[2] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
-            phase_images[2] = toggles_images[r]
             return Toggles(component_toggles, correct_switch_pattern[r])
         else:
             # Button phase: random presses target for each play
@@ -120,6 +123,7 @@ def start_game(window, gui):
             r_sound = button_audio[r]
             s = random.randint(0,3)
             phase_images[3] = button_images[r]
+            phase_audio[3] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
@@ -144,7 +148,8 @@ def start_game(window, gui):
     # Controller: polls timer + current phase
     def controller():
         nonlocal current, phase
-        global gui, strikes_left
+        global strikes_left
+        
         gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
         
         # Timer expired?
@@ -156,14 +161,15 @@ def start_game(window, gui):
         
         # Failure in this phase?
         if ph._failed:
-            sound = strike_audio[strikes-1]
+            strikes_left -= 1
+            sound = strike_audio[NUM_STRIKES - strikes_left - 1]
             mixer.init()
             mixer.music.load(f'{sound}')
             mixer.music.play()
-            print(strikes)
-            show_image(STRIKE_IMAGES[strikes-1])
+            print(f"Strikes left: {strikes_left}")
+            show_image(STRIKE_IMAGES[NUM_STRIKES - strikes_left - 1])
             ph._failed = False
-            if strikes <= 0:
+            if strikes_left <= 0:
                 return end_game(gui, False)
             gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
             # restart same phase after a delay
@@ -206,6 +212,7 @@ def start_game(window, gui):
 
 # Entry point
 def main():
+    global global_window
     global_window = Tk()
     
     gui = Lcd(global_window)
