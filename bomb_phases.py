@@ -43,11 +43,11 @@ class Lcd(Frame):
         for w in self.winfo_children(): w.destroy()
         font = ("Courier", 16, "bold")
         self._ltime    = Label(self, text="Time: ", fg="#00FF00", bg="black", font=font)
-        self._lstrikes = Label(self, text=f"Strikes: {NUM_STRIKES}", fg="#00FF00", bg="black", font=font)
-        self._lkeypad  = Label(self, text="Keypad: ...", fg="#00FF00", bg="black", font=font)
-        self._lwires   = Label(self, text="Wires: ...", fg="#00FF00", bg="black", font=font)
-        self._ltoggles = Label(self, text="Toggles: ...", fg="#00FF00", bg="black", font=font)
-        self._lbutton  = Label(self, text="Button: ...", fg="#00FF00", bg="black", font=font)
+        self._lstrikes = Label(self, text=f"Strikes: {NUM_STRIKES}", fg="#bb105c", bg="black", font=font)
+        self._lkeypad  = Label(self, text="Keypad: ...", fg="#FF0000", bg="black", font=font)
+        self._lwires   = Label(self, text="Wires: ...", fg="#0000FF", bg="black", font=font)
+        self._ltoggles = Label(self, text="Toggles: ...", fg="#d46fb9", bg="black", font=font)
+        self._lbutton  = Label(self, text="Button: ...", fg="#23adf5", bg="black", font=font)
         for idx, lbl in enumerate((self._ltime, self._lstrikes,
                                    self._lkeypad, self._lwires,
                                    self._ltoggles, self._lbutton)):
@@ -56,14 +56,24 @@ class Lcd(Frame):
     def set_timer(self, timer): self._timer = timer
     def set_button(self, button): self._button = button
 
-    def update(self, keypad, wires, toggles, button, strikes):
+    def update_timer(self):
         if self._timer:
             self._ltime['text'] = f"Time: {self._timer.as_mmss()}"
+        
+    def update_strikes(self, strikes):
         self._lstrikes['text'] = f"Strikes: {strikes}"
+        
+    def update_keypad(self, keypad):
         self._lkeypad['text'] = f"Keypad: {str(keypad)}"
-        self._lwires['text']   = f"Wires: {str(wires)}"
+        
+    def update_toggles(self, toggles):
         self._ltoggles['text']= f"Toggles: {str(toggles)}"
+    
+    def update_button(self, button):
         self._lbutton['text']  = f"Button: {str(button)}"
+    
+    def update_wires(self, wires):
+        self._lwires['text']   = f"Wires: {str(wires)}"
 
     def conclude(self, success: bool):
         for w in self.winfo_children(): w.destroy()
