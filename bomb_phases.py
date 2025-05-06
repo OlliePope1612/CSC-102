@@ -221,4 +221,4 @@ class Button(PhaseThread):
             time.sleep(0.05)
 
     def __str__(self):
-        return f"{self._count}/{self._presses}
+        return f"{self._count}/{self._presses}"
