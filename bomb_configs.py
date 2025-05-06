@@ -83,13 +83,24 @@ import random
 from random import randint, shuffle, choice
 from string import ascii_uppercase
 
-correct_code = [1999, 8765, 1293, 8503, 1423, 9546, 8051, 1943]
-correct_switch_pattern = [1010, 1000, 1100, 1110, 1111, 1011, 1001, 1101]
-correct_wire = [10101, 10000, 11000, 11100, 11110, 10100, 10110, 10111]
-button_target = random.randint(1, 8)
+correct_code = [1999, 135, 1235, 31415]
+correct_switch_pattern = [1010, 1010, 1011, 1100]
+correct_wire = [10101, 10000, 10001, 10100]
+amount_of_presses = [5, 7, 15, 8] # button_target
+BUTTON_MAX_TIME = [7, 8, 10, 9]
 button_color = 'R'
 
-BUTTON_MAX_TIME = 5
+keypad_images = ["KEYPAD.jpeg", "KEYPAD2.jpeg", "KEYPAD3.jpeg", "KEYPAD4.jpeg"]
+wires_images  = ["WIRES.jpeg",  "WIRES2.jpeg",  "WIRES3.jpeg",  "WIRES4.jpeg"]
+toggles_images= ["TOGGLES.jpeg", "TOGGLES2.jpeg", "TOGGLES3.jpeg", "TOGGLES4.jpeg"]
+button_images = ["BUTTON.jpeg", "BUTTON2.jpeg", "BUTTON3.jpeg", "BUTTON4.jpeg"]
+
+
+keypad_audio = ["KEYPAD.m4a", "KEYPAD2.m4a", "KEYPAD3.m4a", "KEYPAD4.m4a"]
+wires_audio = ["WIRES.m4a", "ONETHOUSAND.m4a", "WIRES3.m4a", "WIRES4.m4a"]
+toggles_audio = ["TOGGLES.m4a", "TOGGLES2.m4a", "TOGGLES3.m4a", "TOGGLES4.m4a"]
+button_audio = ["FIVETIMES.m4a", "SEVENTIMES.m4a", "FIFTEENTIMES.m4a", "EIGHTTIMES.m4a"]
+strike_audio = ["STRIKE1.m4a", "STRIKE2.m4a", "STRIKE3.m4a", "STRIKE4.m4a"]
 def genSerial():
     # sum-of-digits defines toggles target (1..15)
     serial_digits = []
@@ -156,3 +167,4 @@ if DEBUG:
     print(f"Wires target      = {format(wires_target,'05b')}")
     print(f"Toggles target    = {format(toggles_target,'04b')}")
     print(f"Button presses    = {button_target} on {button_color} LED")
+
