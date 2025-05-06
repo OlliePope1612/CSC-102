@@ -9,6 +9,8 @@ from PIL import Image, ImageTk
 from bomb_configs import *
 from bomb_phases import *
 import shutil, subprocess
+from playsound import playsound
+from pygame import mixer
 
 STRIKE_IMAGES = [
     "STRIKE1.jpeg",
@@ -21,22 +23,7 @@ STRIKE_IMAGES = [
 global_window = None
 img_window    = None
 img_photo     = None
-
-# Audio-processing function
-def play_sound(path:str):
-    if shutil.which("cvlc"):
-        subprocess.Popen(
-            [
-                "cvlc",
-                "--play-and-exit",
-                "--aout", "alsa",
-                "--alsa-audio-device", "hw:0,0",
-                path
-            ]
-            ['omxplayer', path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+    
 # Show a full-screen image and auto-focus it
 def show_image(path):
     global img_window, img_photo
@@ -86,27 +73,39 @@ def start_game(window, gui):
         if i == 0:
             # Keypad phase
             r = random.randrange(len(keypad_images))
+            r_sound = keypad_audio[r]
             phase_images[0] = keypad_images[r]
-            play_sound(keypad_audio[r])
+            mixer.init()
+            mixer.music.load(f'{r_sound}')
+            mixer.music.play()
             return Keypad(component_keypad, correct_code[r])
         elif i == 1:
             # Wires phase
             r = random.randrange(len(wires_images))
+            r_sound = wires_audio[r]
+            mixer.init()
+            mixer.music.load(f'{r_sound}')
+            mixer.music.play()
             phase_images[1] = wires_images[r]
-            play_sound(wires_audio[r])
             return Wires(component_wires, correct_wire[r])
         elif i == 2:
             # Toggles phase
             r = random.randrange(len(toggles_images))
+            r_sound = toggles_audio[r]
+            mixer.init()
+            mixer.music.load(f'{r_sound}')
+            mixer.music.play()
             phase_images[2] = toggles_images[r]
-            play_sound(toggles_audio[r])
             return Toggles(component_toggles, correct_switch_pattern[r])
         else:
             # Button phase: random presses target for each play
             r = random.randrange(len(button_images))
+            r_sound = button_audio[r]
             s = random.randint(0,3)
             phase_images[3] = button_images[r]
-            play_sound(button_audio[r])
+            mixer.init()
+            mixer.music.load(f'{r_sound}')
+            mixer.music.play()
             btn = Button(component_button_state,
                          component_button_RGB,
                          button_color,
@@ -192,3 +191,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
