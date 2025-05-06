@@ -96,11 +96,11 @@ toggles_images= ["TOGGLES.jpeg", "TOGGLES2.jpeg", "TOGGLES3.jpeg", "TOGGLES4.jpe
 button_images = ["BUTTON.jpeg", "BUTTON2.jpeg", "BUTTON3.jpeg", "BUTTON4.jpeg"]
 
 
-keypad_audio = ["KEYPAD.m4a", "KEYPAD2.m4a", "KEYPAD3.m4a", "KEYPAD4.m4a"]
-wires_audio = ["WIRES.m4a", "ONETHOUSAND.m4a", "WIRES3.m4a", "WIRES4.m4a"]
-toggles_audio = ["TOGGLES.m4a", "TOGGLES2.m4a", "TOGGLES3.m4a", "TOGGLES4.m4a"]
-button_audio = ["FIVETIMES.m4a", "SEVENTIMES.m4a", "FIFTEENTIMES.m4a", "EIGHTTIMES.m4a"]
-strike_audio = ["STRIKE1.m4a", "STRIKE2.m4a", "STRIKE3.m4a", "STRIKE4.m4a"]
+keypad_audio = ["KEYPAD1.wav", "KEYPAD2.wav", "KEYPAD3.wav", "KEYPAD4.wav"]
+wires_audio = ["WIRES.wav", "ONETHOUSAND.wav", "WIRES3.wav", "WIRES4.wav"]
+toggles_audio = ["TOGGLES.wav", "TOGGLES2.wav", "TOGGLES3.wav", "TOGGLES4.wav"]
+button_audio = ["FIVETIMES.wav", "SEVENTIMES.wav", "FIFTEENTIMES.wav", "EIGHTTIMES.wav"]
+strike_audio = ["STRIKE1.wav", "STRIKE2.wav", "STRIKE3.wav", "STRIKE4.wav"]
 def genSerial():
     # sum-of-digits defines toggles target (1..15)
     serial_digits = []
