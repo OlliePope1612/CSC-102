@@ -6,13 +6,9 @@ import sys
 import random
 from tkinter import Tk, Toplevel, Label
 from PIL import Image, ImageTk
-from bomb_configs import *       # hardware setup & random targets
-from bomb_phases import Timer, Keypad, Wires, Toggles, Button, Lcd
-
-keypad_images = ["KEYPAD.jpeg", "KEYPAD2.jpeg", "KEYPAD3.jpeg", "KEYPAD4.jpeg"]
-wires_images  = ["WIRES.jpeg",  "WIRES2.jpeg",  "WIRES3.jpeg",  "WIRES4.jpeg"]
-toggles_images= ["TOGGLES.jpeg"]
-button_images = ["BUTTON.jpeg"]
+from bomb_configs import *
+from bomb_phases import *
+import shutil, subprocess
 
 STRIKE_IMAGES = [
     "STRIKE1.jpeg",
@@ -26,24 +22,41 @@ global_window = None
 img_window    = None
 img_photo     = None
 
+# Audio-processing function
+def play_sound(path:str):
+    if shutil.which("cvlc"):
+        subprocess.Popen(
+            [
+                "cvlc",
+                "--play-and-exit",
+                "--aout", "alsa",
+                "--alsa-audio-device", "hw:0,0",
+                path
+            ]
+            ['omxplayer', path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 # Show a full-screen image and auto-focus it
 def show_image(path):
     global img_window, img_photo
-    if img_window:
-        try: img_window.destroy()
-        except: pass
-    img_window = Toplevel(global_window)
+    # Destroy previous image window if it exists
+    if img_window is not None:
+        try:
+            img_window.destroy()
+        except:
+            pass
+
+    # Create new fullscreen image window
+    img_window = Toplevel()
     img_window.attributes('-fullscreen', True)
-    # scale to fit screen
-    screen_w = global_window.winfo_screenwidth()
-    screen_h = global_window.winfo_screenheight()
-    img = Image.open(path)
-    iw, ih = img.size
-    scale = min(screen_w/iw, screen_h/ih)
-    img = img.resize((int(iw*scale), int(ih*scale)), Image.LANCZOS)
+
+    # Resize and display image
+    img = Image.open(path).resize((600, 400), Image.LANCZOS)
     img_photo = ImageTk.PhotoImage(img)
     lbl = Label(img_window, image=img_photo)
-    lbl.place(relx=0.5, rely=0.5, anchor='center')
+    lbl.pack()
+
 
 # End the game: win or lose
 def end_game(gui, success: bool):
@@ -51,6 +64,10 @@ def end_game(gui, success: bool):
     if img_window:
         try: img_window.destroy()
         except: pass
+    if success == True:
+        play_sound("DEFUSED.m4a")
+    else:
+        play_sound("BOOM.m4a")
     gui.conclude(success)
 
 # Main game loop
@@ -65,58 +82,61 @@ def start_game(window, gui):
     # Helper to randomly pick image+target and instantiate a phase
     phase_images = [None]*4
     phases = []
-    def create_phase(idx):
-        if idx == 0:
+    def create_phase(i):
+        if i == 0:
             # Keypad phase
             r = random.randrange(len(keypad_images))
             phase_images[0] = keypad_images[r]
+            play_sound(keypad_audio[r])
             return Keypad(component_keypad, correct_code[r])
-        elif idx == 1:
+        elif i == 1:
             # Wires phase
             r = random.randrange(len(wires_images))
             phase_images[1] = wires_images[r]
+            play_sound(wires_audio[r])
             return Wires(component_wires, correct_wire[r])
-        elif idx == 2:
+        elif i == 2:
             # Toggles phase
             r = random.randrange(len(toggles_images))
             phase_images[2] = toggles_images[r]
+            play_sound(toggles_audio[r])
             return Toggles(component_toggles, correct_switch_pattern[r])
         else:
             # Button phase: random presses target for each play
             r = random.randrange(len(button_images))
+            s = random.randint(0,3)
             phase_images[3] = button_images[r]
-            target = random.randint(1, len(button_images))
+            play_sound(button_audio[r])
             btn = Button(component_button_state,
                          component_button_RGB,
                          button_color,
-                         target,
-                         timer)
+                         amount_of_presses[s],
+                         BUTTON_MAX_TIME[s])
             gui.set_button(btn)
             return btn
 
     # Create and start the first interactive phase
     current = 0
-    phase = create_phase(0)
+    phase = create_phase(current)
     phases.append(phase)
     phase.start()
-    show_image(phase_images[0])
-
-    strikes = NUM_STRIKES
+    show_image(phase_images[current])
 
     # Controller: polls timer + current phase
     def controller():
-        nonlocal current, strikes, phase
+        nonlocal current, phase
         # Timer expired?
         if timer._failed:
             timer._running = False
             return end_game(gui, False)
 
         ph = phase
+        strikes = NUM_STRIKES
         # Failure in this phase?
         if ph._failed:
             strikes -= 1
-            idx = min(NUM_STRIKES - strikes - 1, len(STRIKE_IMAGES)-1)
-            show_image(STRIKE_IMAGES[idx])
+            play_sound(strike_audio[strikes])
+            show_image(STRIKE_IMAGES[strikes])
             ph._failed = False
             if strikes <= 0:
                 return end_game(gui, False)
@@ -127,8 +147,10 @@ def start_game(window, gui):
 
         # Success in this phase?
         if ph._defused:
+            if img_window:
+                img_window.destroy()
             current += 1
-            if current >= 4:
+            if current == 4:
                 timer._running = False
                 return end_game(gui, True)
             # set up next phase
@@ -138,13 +160,16 @@ def start_game(window, gui):
             window.after(500, lambda: show_image(phase_images[current]))
             window.after(200, controller)
             return
-
-        # Update HUD and continue polling
-        gui.update(phases[0] if current>0 else phase,
-                   phases[1] if current>1 else phase,
-                   phases[2] if current>2 else phase,
-                   phase,
-                   strikes)
+        
+        if current == 0:
+            gui.update_keypad(phases[0])
+        elif current == 1:
+            gui.update_wires(phases[1])
+        elif current == 2:
+            gui.update_toggles(phases[2])
+        elif current == 3:
+            gui.update_button(phases[3])
+            phases[3].set_color('G')
         window.after(100, controller)
 
     # Kick off the controller loop
@@ -154,12 +179,6 @@ def start_game(window, gui):
 def main():
     global global_window
     global_window = Tk()
-
-    # Try to maximize, or fall back to fullscreen
-    try:
-        global_window.state('zoomed')
-    except:
-        global_window.attributes('-fullscreen', True)
 
     gui = Lcd(global_window)
 
