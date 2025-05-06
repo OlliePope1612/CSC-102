@@ -11,6 +11,8 @@ from bomb_phases import *
 import shutil, subprocess
 from pygame import mixer
 
+strikes_left = 0
+
 STRIKE_IMAGES = [
     "STRIKE1.jpeg",
     "STRIKE2.jpeg",
@@ -22,7 +24,7 @@ STRIKE_IMAGES = [
 global_window = None
 img_window    = None
 img_photo     = None
-    
+
 # Show a full-screen image and auto-focus it
 def show_image(path):
     global img_window, img_photo
@@ -50,154 +52,162 @@ def end_game(gui, success: bool):
     if img_window:
         try: img_window.destroy()
         except: pass
+    if success == True:
+        mixer.init()
+        mixer.music.load('DEFUSED.wav')
+        mixer.music.play()
+    else:
+        mixer.init()
+        mixer.music.load('BOOM.wav')
+        mixer.music.play()
+    gui.conclude(success)
 
-    mixer.init()
-    mixer.music.load('DEFUSED.wav' if success else 'BOOM.wav')
-    mixer.music.play()
-
-    # <-- NOTE: your Lcd method is called `.conclusion()`, not `.conclude()`
-    gui.conclusion(success)
-
-
+def update_gui(gui, strikes_left):
+    gui_lstrikes["text"] = f"Strikes left: {strikes_left}"
+    strikes_left -= 1
+    root.after(100, lambda: update_gui(gui, strikes_left))
+    
+def update_strikes():
+    gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+        
+# Main game loop
 def start_game(window, gui):
+    global random_button_time
     global strikes_left
-    strikes_left = NUM_STRIKES
 
     gui.setup_game()
 
-    # pull out strikes–updater so we can call it whenever
-    def update_strikes():
-        gui.update_strikes(strikes_left)
-    update_strikes()
-
-    # start the timer
+    # Start the shared countdown timer
     timer = Timer(component_7seg, COUNTDOWN)
     gui.set_timer(timer)
     timer.start()
 
-    # prepare storage for images & audio so we can replay them on retry
+    # Helper to randomly pick image+target and instantiate a phase
     phase_images = [None]*4
-    phase_audio  = [None]*4
-
+    phase_audio = [None]*4
+    phases = []
     def create_phase(i):
-        # pick a random index & remember both image+audio
         if i == 0:
+            # Keypad phase
             r = random.randrange(len(keypad_images))
+            r_sound = keypad_audio[r]
             phase_images[0] = keypad_images[r]
-            phase_audio[0]  = keypad_audio[r]
-            mixer.init(); mixer.music.load(phase_audio[0]); mixer.music.play()
+            mixer.init()
+            mixer.music.load(f'{r_sound}')
+            mixer.music.play()
             return Keypad(component_keypad, correct_code[r])
-
         elif i == 1:
+            # Wires phase
             r = random.randrange(len(wires_images))
+            r_sound = wires_audio[r]
+            mixer.init()
+            mixer.music.load(f'{r_sound}')
+            mixer.music.play()
             phase_images[1] = wires_images[r]
-            phase_audio[1]  = wires_audio[r]
-            mixer.init(); mixer.music.load(phase_audio[1]); mixer.music.play()
             return Wires(component_wires, correct_wire[r])
-
         elif i == 2:
+            # Toggles phase
             r = random.randrange(len(toggles_images))
+            r_sound = toggles_audio[r]
+            mixer.init()
+            mixer.music.load(f'{r_sound}')
+            mixer.music.play()
             phase_images[2] = toggles_images[r]
-            phase_audio[2]  = toggles_audio[r]
-            mixer.init(); mixer.music.load(phase_audio[2]); mixer.music.play()
             return Toggles(component_toggles, correct_switch_pattern[r])
-
         else:
+            # Button phase: random presses target for each play
             r = random.randrange(len(button_images))
+            r_sound = button_audio[r]
+            s = random.randint(0,3)
             phase_images[3] = button_images[r]
-            phase_audio[3]  = button_audio[r]
-            mixer.init(); mixer.music.load(phase_audio[3]); mixer.music.play()
-
-            # pick a random press‐count & timeout
-            s = random.randrange(len(amount_of_presses))
-            timeout = BUTTON_MAX_TIME[s]
-            btn = Button(
-                component_button_state,
-                component_button_RGB,
-                button_color,
-                amount_of_presses[s],
-                timeout,
-                timer
-            )
+            mixer.init()
+            mixer.music.load(f'{r_sound}')
+            mixer.music.play()
+            random_button_time = BUTTON_MAX_TIME[s]
+            btn = Button(component_button_state,
+                         component_button_RGB,
+                         button_color,
+                         amount_of_presses[s],
+                         random_button_time,
+                         timer
+                         )
             gui.set_button(btn)
             return btn
 
-    # build & start the first phase
+    # Create and start the first interactive phase
     current = 0
-    phase   = create_phase(current)
+    phase = create_phase(current)
+    phases.append(phase)
     phase.start()
     show_image(phase_images[current])
-
-
-    # the polling loop
+        
+    # Controller: polls timer + current phase
     def controller():
-        nonlocal current, phase, strikes_left
-
-        # check for timer fail
+        nonlocal current, phase
+        global gui, strikes_left
+        gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+        
+        # Timer expired?
         if timer._failed:
             timer._running = False
             return end_game(gui, False)
 
-        # on failure, strike & retry
-        if phase._failed:
-            strikes_left -= 1
-            update_strikes()
-
-            # play the appropriate strike sound
+        ph = phase
+        
+        # Failure in this phase?
+        if ph._failed:
+            sound = strike_audio[strikes-1]
             mixer.init()
-            mixer.music.load(strike_audio[strikes_left])
+            mixer.music.load(f'{sound}')
             mixer.music.play()
-
-            # show strike image for 2s
-            show_image(STRIKE_IMAGES[strikes_left], hold_ms=2000)
-
-            phase._failed = False
-            if strikes_left <= 0:
+            print(strikes)
+            show_image(STRIKE_IMAGES[strikes-1])
+            ph._failed = False
+            if strikes <= 0:
                 return end_game(gui, False)
-
-            # after 2s, replay the same challenge image+audio
+            gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+            # restart same phase after a delay
             window.after(2000, lambda: show_image(phase_images[current]))
-            window.after(2000, lambda: mixer.init() or mixer.music.load(phase_audio[current]) or mixer.music.play())
-            window.after(2100, controller)
+            mixer.init()
+            mixer.music.load(phase_audio[current])
+            mixer.music.play()
+            window.after(200, controller)
             return
 
-        # on success, advance
-        if phase._defused:
+        # Success in this phase?
+        if ph._defused:
             if img_window:
-                try: img_window.destroy()
-                except: pass
-
+                img_window.destroy()
             current += 1
-            if current >= 4:
+            if current == 4:
                 timer._running = False
                 return end_game(gui, True)
-
+            # set up next phase
             phase = create_phase(current)
+            phases.append(phase)
             phase.start()
             window.after(500, lambda: show_image(phase_images[current]))
-            window.after(600, controller)
+            window.after(200, controller)
             return
-
-        # update the LCD for whichever phase is active
+        
         if current == 0:
-            gui.update_keypad(phase)
+            gui.update_keypad(phases[0])
         elif current == 1:
-            gui.update_wires(phase)
+            gui.update_wires(phases[1])
         elif current == 2:
-            gui.update_toggles(phase)
-        else:
-            gui.update_button(phase)
-
-        # keep polling
+            gui.update_toggles(phases[2])
+        elif current == 3:
+            gui.update_button(phases[3])
+            phases[3].set_color('G')
         window.after(100, controller)
 
-    # kick off the controller
+    # Kick off the controller loop
     window.after(100, controller)
+
 # Entry point
 def main():
-    global global_window
     global_window = Tk()
-
+    
     gui = Lcd(global_window)
 
     if ANIMATE:
