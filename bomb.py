@@ -9,7 +9,6 @@ from PIL import Image, ImageTk
 from bomb_configs import *
 from bomb_phases import *
 import shutil, subprocess
-from playsound import playsound
 from pygame import mixer
 
 STRIKE_IMAGES = [
@@ -39,7 +38,7 @@ def show_image(path):
     img_window.attributes('-fullscreen', True)
 
     # Resize and display image
-    img = Image.open(path).resize((600, 400), Image.LANCZOS)
+    img = Image.open(path).resize((1000, 800), Image.LANCZOS)
     img_photo = ImageTk.PhotoImage(img)
     lbl = Label(img_window, image=img_photo)
     lbl.pack()
@@ -191,4 +190,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
