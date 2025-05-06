@@ -51,14 +51,20 @@ def end_game(gui, success: bool):
         try: img_window.destroy()
         except: pass
     if success == True:
-        play_sound("DEFUSED.m4a")
+        mixer.init()
+        mixer.music.load('DEFUSED.wav')
+        mixer.music.play()
     else:
-        play_sound("BOOM.m4a")
+        mixer.init()
+        mixer.music.load('BOOM.wav')
+        mixer.music.play()
     gui.conclude(success)
 
 # Main game loop
 def start_game(window, gui):
+    global random_button_time
     gui.setup_game()
+    update_strikes()
 
     # Start the shared countdown timer
     timer = Timer(component_7seg, COUNTDOWN)
@@ -67,6 +73,7 @@ def start_game(window, gui):
 
     # Helper to randomly pick image+target and instantiate a phase
     phase_images = [None]*4
+    phase_audio = [None]*4
     phases = []
     def create_phase(i):
         if i == 0:
@@ -105,11 +112,14 @@ def start_game(window, gui):
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
+            random_button_time = BUTTON_MAX_TIME[s]
             btn = Button(component_button_state,
                          component_button_RGB,
                          button_color,
                          amount_of_presses[s],
-                         BUTTON_MAX_TIME[s])
+                         random_button_time,
+                         timer
+                         )
             gui.set_button(btn)
             return btn
 
@@ -119,27 +129,39 @@ def start_game(window, gui):
     phases.append(phase)
     phase.start()
     show_image(phase_images[current])
-
+    
+    def update_strikes():
+        gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
+        
     # Controller: polls timer + current phase
     def controller():
         nonlocal current, phase
+        global strikes_left
         # Timer expired?
         if timer._failed:
             timer._running = False
             return end_game(gui, False)
 
         ph = phase
-        strikes = NUM_STRIKES
+        strikes_left -= 1
+        update_strikes()
         # Failure in this phase?
         if ph._failed:
-            strikes -= 1
-            play_sound(strike_audio[strikes])
-            show_image(STRIKE_IMAGES[strikes])
+            handle_strike()
+            sound = strike_audio[strikes]
+            mixer.init()
+            mixer.music.load(f'{sound}')
+            mixer.music.play()
+            print(strikes)
+            show_image(STRIKE_IMAGES[strikes-1])
             ph._failed = False
             if strikes <= 0:
                 return end_game(gui, False)
             # restart same phase after a delay
             window.after(2000, lambda: show_image(phase_images[current]))
+            mixer.init()
+            mixer.music.load(phase_audio[current])
+            mixer.music.play()
             window.after(200, controller)
             return
 
