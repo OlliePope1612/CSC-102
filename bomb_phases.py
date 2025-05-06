@@ -183,30 +183,42 @@ class Toggles(PhaseThread):
 class Button(PhaseThread):
     def __init__(self, state_pin, rgb_pins, color, presses, timer):
         super().__init__(state_pin, presses)
-        self._rgb            = rgb_pins
-        self._original_color = color
-        self._presses        = int(presses)
-        self._timer          = timer
-        self._count          = 0
+        self._rgb      = rgb_pins
+        self._original = color
+        self._presses  = int(presses)
+        self._timer    = timer
+        self._count    = 0
+        self._start_ts = None
+        # light the “defuse” LED initially
         self.set_color(color)
 
     def set_color(self, color):
-        # store and light only that LED
-        self._color = color
+        # turn on only the LED matching `color`
         for i, led in enumerate(self._rgb):
             led.value = (['R','G','B'][i] != color)
 
     def run(self):
+        import time
+        from bomb_configs import BUTTON_MAX_TIME
+
         while self._running:
             if self._component.value:
-                # wait for release
+                # wait for you to release the button
                 while self._component.value:
-                    time.sleep(0.05)
+                    time.sleep(0.02)
+                # mark time on first press
+                if self._count == 0:
+                    self._start_ts = time.time()
                 self._count += 1
+                # if that was the last press, check your speed
                 if self._count >= self._presses:
-                    self.defuse()
-            time.sleep(0.1)
+                    elapsed = time.time() - self._start_ts
+                    if elapsed <= BUTTON_MAX_TIME:
+                        self.defuse()
+                    else:
+                        self.fail()
+                    return
+            time.sleep(0.05)
+
     def __str__(self):
-        return f"{self._count}/{self._presses}"
-
-
+        return f"{self._count}/{self._presses}
