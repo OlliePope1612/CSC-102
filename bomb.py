@@ -9,11 +9,10 @@ from PIL import Image, ImageTk
 from bomb_configs import *       # hardware setup & random targets
 from bomb_phases import Timer, Keypad, Wires, Toggles, Button, Lcd
 
-# --- Image pools for each phase; one is chosen at random at game start ---
-keypad_images = ["KEYPAD1.jpeg", "KEYPAD2.jpeg", "KEYPAD3.jpeg", "KEYPAD4.jpeg"]
-wires_images  = ["WIRES1.jpeg",  "WIRES2.jpeg",  "WIRES3.jpeg",  "WIRES4.jpeg"]
-toggles_images= ["TOGGLES1.jpeg","TOGGLES2.jpeg","TOGGLES3.jpeg","TOGGLES4.jpeg"]
-button_images = ["BUTTON1.jpeg","BUTTON2.jpeg","BUTTON3.jpeg","BUTTON4.jpeg"]
+keypad_images = ["KEYPAD.jpeg", "KEYPAD2.jpeg", "KEYPAD3.jpeg", "KEYPAD4.jpeg"]
+wires_images  = ["WIRES.jpeg",  "WIRES2.jpeg",  "WIRES3.jpeg",  "WIRES4.jpeg"]
+toggles_images= ["TOGGLES.jpeg"]
+button_images = ["BUTTON.jpeg"]
 
 STRIKE_IMAGES = [
     "STRIKE1.jpeg",
@@ -155,26 +154,15 @@ def start_game(window, gui):
 def main():
     global global_window
     global_window = Tk()
-    global_window.state('zoomed')
-    gui = Lcd(global_window)
-    if ANIMATE:
-        gui.after(200, gui.setup_boot)
-        gui.after(len(boot_text)*30 + 500, start_game, global_window, gui)
-    else:
-        start_game(global_window, gui)
-    global_window.mainloop()
 
-# run
-if __name__ == '__main__':
-    main()
-# Entry point
-def main():
-    global global_window
-    global_window = Tk()
-    global_window.state('zoomed')  # maximize window
+    # Try to maximize, or fall back to fullscreen
+    try:
+        global_window.state('zoomed')
+    except:
+        global_window.attributes('-fullscreen', True)
+
     gui = Lcd(global_window)
 
-    # Boot animation, then start
     if ANIMATE:
         gui.after(200, gui.setup_boot)
         gui.after(len(boot_text)*30 + 500, start_game, global_window, gui)
@@ -185,4 +173,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
