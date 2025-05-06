@@ -79,10 +79,17 @@ else:
     component_button_RGB = [MockPin() for _ in range(3)]
 
 # helper: serial & keypad generation
-import randomm
+import random
 from random import randint, shuffle, choice
 from string import ascii_uppercase
 
+correct_code = [1999, 8765, 1293, 8503, 1423, 9546, 8051, 1943]
+correct_switch_pattern = [1010, 1000, 1100, 1110, 1111, 1011, 1001, 1101]
+correct_wire = [10101, 10000, 11000, 11100, 11110, 10100, 10110, 10111]
+button_target = random.randint(1, 8)
+button_color = 'R'
+
+BUTTON_MAX_TIME = 5
 def genSerial():
     # sum-of-digits defines toggles target (1..15)
     serial_digits = []
@@ -131,7 +138,6 @@ def genKeypadCombination():
 serial, toggles_target, wires_target = genSerial()
 keyword, cipher_keyword, rot, keypad_target, passphrase = genKeypadCombination()
 
-
 # boot text for LCD
 boot_text = (
     "Booting...\n" +
@@ -140,17 +146,6 @@ boot_text = (
     "*Pattern: " + format(wires_target,'05b') + " (wires)\n" +
     "*Pattern: " + format(toggles_target,'04b') + " (toggles)\n"
 )
-
-correct_code = [1999, 8765, 1293, 8503, 1423, 9546, 8051, 1943]
-correct_switch_pattern = [1010, 1000, 1100, 1110, 1111, 1011, 1001, 1101]
-correct_wire = [10101, 10000, 11000, 11100, 11110, 10100, 10110, 10111]
-button_target = random.randint(1, 8)
-button_color = 'R'
-
-wire_images = ["WIRES.jpeg","WIRES2.jpeg", "WIRES3.jpeg", "WIRES4.jpeg"]
-keypad_images = ["KEYPAD.jpeg", "KEYPAD2.jpeg", "KEYPAD3.jpeg", "KEYPAD4.jpeg"]
-toggle_images = ["TOGGLES.jpeg", "TOGGLES2.jpeg", "TOGGLES3.jpeg", "TOGGLES4.jpeg"]
-button_images = ["BUTTON.jpeg", "BUTTON2.jpeg", "BUTTON3.jpeg", "BUTTON4.jpeg"]
 
 
 # Debug output
@@ -161,4 +156,3 @@ if DEBUG:
     print(f"Wires target      = {format(wires_target,'05b')}")
     print(f"Toggles target    = {format(toggles_target,'04b')}")
     print(f"Button presses    = {button_target} on {button_color} LED")
-
