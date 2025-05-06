@@ -7,6 +7,7 @@ import time
 from threading import Thread
 from tkinter import Frame, Label
 from PIL import Image, ImageTk
+from bomb import *
 from bomb_configs import *
 
 ##### GUI / LCD #####
@@ -55,16 +56,16 @@ class Lcd(Frame):
 
     def set_timer(self, timer): self._timer = timer
     def set_button(self, button): self._button = button
-
+        
+    def update_keypad(self, keypad):
+        self._lkeypad['text'] = f"Keypad: {str(keypad)}"
+        
     def update_timer(self):
         if self._timer:
             self._ltime['text'] = f"Time: {self._timer.as_mmss()}"
         
     def update_strikes(self, strikes):
         self._lstrikes['text'] = f"Strikes: {strikes}"
-        
-    def update_keypad(self, keypad):
-        self._lkeypad['text'] = f"Keypad: {str(keypad)}"
         
     def update_toggles(self, toggles):
         self._ltoggles['text']= f"Toggles: {str(toggles)}"
@@ -210,7 +211,10 @@ class Button(PhaseThread):
     def run(self):
         import time
         from bomb_configs import BUTTON_MAX_TIME
-
+        
+        self._timer._value = BUTTON_MAX_TIME
+        if self._timer._value == 0:
+            self._failed = True
         while self._running:
             if self._component.value:
                 # wait for you to release the button
