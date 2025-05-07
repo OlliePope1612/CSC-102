@@ -13,12 +13,13 @@ from pygame import mixer
 
 # Global variables
 strikes_left = 0  # Will be initialized from NUM_STRIKES
+strike_image_audio_index = 1
 
 STRIKE_IMAGES = [
-    "STRIKE1.jpeg",
-    "STRIKE2.jpeg",
-    "STRIKE3.jpeg",
     "STRIKE4.jpeg",
+    "STRIKE3.jpeg",
+    "STRIKE2.jpeg",
+    "STRIKE1.jpeg",
 ]
 
 # Globals for image popups
@@ -41,7 +42,7 @@ def show_image(path):
     img_window.attributes('-fullscreen', True)
 
     # Resize and display image
-    img = Image.open(path).resize((1000, 800), Image.LANCZOS)
+    img = Image.open(path).resize((600, 400), Image.LANCZOS)
     img_photo = ImageTk.PhotoImage(img)
     lbl = Label(img_window, image=img_photo)
     lbl.pack()
@@ -84,7 +85,6 @@ def start_game(window, gui):
 
     # Helper to randomly pick image+target and instantiate a phase
     phase_images = [None]*4
-    phase_audio = [None]*4
     phases = []
     def create_phase(i):
         if i == 0:
@@ -92,7 +92,6 @@ def start_game(window, gui):
             r = random.randrange(len(keypad_images))
             r_sound = keypad_audio[r]
             phase_images[0] = keypad_images[r]
-            phase_audio[0] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
@@ -102,7 +101,6 @@ def start_game(window, gui):
             r = random.randrange(len(wires_images))
             r_sound = wires_audio[r]
             phase_images[1] = wires_images[r]
-            phase_audio[1] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
@@ -112,7 +110,6 @@ def start_game(window, gui):
             r = random.randrange(len(toggles_images))
             r_sound = toggles_audio[r]
             phase_images[2] = toggles_images[r]
-            phase_audio[2] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
@@ -121,17 +118,15 @@ def start_game(window, gui):
             # Button phase: random presses target for each play
             r = random.randrange(len(button_images))
             r_sound = button_audio[r]
-            s = random.randint(0,3)
             phase_images[3] = button_images[r]
-            phase_audio[3] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
-            random_button_time = BUTTON_MAX_TIME[s]
+            random_button_time = BUTTON_MAX_TIME[r]
             btn = Button(component_button_state,
                          component_button_RGB,
                          button_color,
-                         amount_of_presses[s],
+                         amount_of_presses[r],
                          random_button_time,
                          timer
                          )
@@ -148,7 +143,7 @@ def start_game(window, gui):
     # Controller: polls timer + current phase
     def controller():
         nonlocal current, phase
-        global strikes_left
+        global strikes_left, strike_image_audio_index
         
         gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
         
@@ -161,22 +156,25 @@ def start_game(window, gui):
         
         # Failure in this phase?
         if ph._failed:
+            strike_image_audio_index += 1
+            if strike_image_audio_index > 5:
+                return end_game(gui, False)
+            else:
+                show_image(STRIKE_IMAGES[strike_image_audio_index-2])
             strikes_left -= 1
-            sound = strike_audio[NUM_STRIKES - strikes_left - 1]
+            sound = strike_audio[strike_image_audio_index-2]
+            print(strike_image_audio_index)
             mixer.init()
             mixer.music.load(f'{sound}')
             mixer.music.play()
             print(f"Strikes left: {strikes_left}")
-            show_image(STRIKE_IMAGES[NUM_STRIKES - strikes_left - 1])
+            
             ph._failed = False
             if strikes_left <= 0:
                 return end_game(gui, False)
             gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
             # restart same phase after a delay
-            window.after(2000, lambda: show_image(phase_images[current]))
-            mixer.init()
-            mixer.music.load(phase_audio[current])
-            mixer.music.play()
+            window.after(4000, lambda: show_image(phase_images[current]))
             window.after(200, controller)
             return
 
