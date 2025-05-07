@@ -7,8 +7,8 @@ import time
 from threading import Thread
 from tkinter import Frame, Label
 from PIL import Image, ImageTk
-from bomb import *
-from bomb_configs import *
+from bomb2 import *
+from bomb_configs2 import *
 
 ##### GUI / LCD #####
 class Lcd(Frame):
