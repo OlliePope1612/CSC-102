@@ -192,27 +192,24 @@ class Toggles(PhaseThread):
 
 ##### Button Phase #####
 class Button(PhaseThread):
-    def __init__(self, state_pin, rgb_pins, color, presses, timer):
+    def __init__(self, state_pin, rgb_pins, color, presses, timer_value, timer):
         super().__init__(state_pin, presses)
         self._rgb      = rgb_pins
         self._original = color
         self._presses  = int(presses)
         self._timer    = timer
+        self._timer._value = timer_value
         self._count    = 0
         self._start_ts = None
         # light the “defuse” LED initially
         self.set_color(color)
-
+  
     def set_color(self, color):
         # turn on only the LED matching `color`
         for i, led in enumerate(self._rgb):
             led.value = (['R','G','B'][i] != color)
 
-    def run(self):
-        import time
-        from bomb_configs import BUTTON_MAX_TIME
-        
-        self._timer._value = BUTTON_MAX_TIME
+    def run(self):        
         if self._timer._value == 0:
             self._failed = True
         while self._running:
@@ -227,7 +224,7 @@ class Button(PhaseThread):
                 # if that was the last press, check your speed
                 if self._count >= self._presses:
                     elapsed = time.time() - self._start_ts
-                    if elapsed <= BUTTON_MAX_TIME:
+                    if elapsed <= self._timer._value:
                         self.defuse()
                     else:
                         self.fail()
