@@ -85,13 +85,16 @@ def start_game(window, gui):
 
     # Helper to randomly pick image+target and instantiate a phase
     phase_images = [None]*4
+    phase_audio = [None]*4
     phases = []
+    
     def create_phase(i):
         if i == 0:
             # Keypad phase
             r = random.randrange(len(keypad_images))
             r_sound = keypad_audio[r]
             phase_images[0] = keypad_images[r]
+            phase_audio[0] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
@@ -101,6 +104,7 @@ def start_game(window, gui):
             r = random.randrange(len(wires_images))
             r_sound = wires_audio[r]
             phase_images[1] = wires_images[r]
+            phase_audio[1] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
@@ -110,6 +114,7 @@ def start_game(window, gui):
             r = random.randrange(len(toggles_images))
             r_sound = toggles_audio[r]
             phase_images[2] = toggles_images[r]
+            phase_audio[2] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
@@ -118,18 +123,29 @@ def start_game(window, gui):
             # Button phase: random presses target for each play
             r = random.randrange(len(button_images))
             r_sound = button_audio[r]
+            s = random.randint(0,3)
             phase_images[3] = button_images[r]
+            phase_audio[3] = r_sound
             mixer.init()
             mixer.music.load(f'{r_sound}')
             mixer.music.play()
-            random_button_time = BUTTON_MAX_TIME[r]
+            random_button_time = BUTTON_MAX_TIME[s]
+            
+            # Choose button color based on remaining phases that need to be solved
+            # If we still need to solve Wires or Toggles, use Blue button
+            # Otherwise use Green button
+            if 1 in [p for p in range(len(phases)) if not phases[p]._defused and p < 3 and p > 0]:
+                button_mode_color = 'B'  # Blue for submission mode
+            else:
+                button_mode_color = 'G'  # Green for normal mode
+            
             btn = Button(component_button_state,
-                         component_button_RGB,
-                         button_color,
-                         amount_of_presses[r],
-                         random_button_time,
-                         timer
-                         )
+                        component_button_RGB,
+                        button_mode_color,  # Use dynamic color
+                        amount_of_presses[s],
+                        random_button_time,
+                        timer
+                        )
             gui.set_button(btn)
             return btn
 
@@ -143,41 +159,35 @@ def start_game(window, gui):
     # Controller: polls timer + current phase
     def controller():
         nonlocal current, phase
-        global strikes_left, strike_image_audio_index
-        
+        global strikes_left
         gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
         
         # Timer expired?
         if timer._failed:
             timer._running = False
             return end_game(gui, False)
-
         ph = phase
         
         # Failure in this phase?
         if ph._failed:
-            strike_image_audio_index += 1
-            if strike_image_audio_index > 5:
-                return end_game(gui, False)
-            else:
-                show_image(STRIKE_IMAGES[strike_image_audio_index-2])
             strikes_left -= 1
-            sound = strike_audio[strike_image_audio_index-2]
-            print(strike_image_audio_index)
+            sound = strike_audio[NUM_STRIKES - strikes_left - 1]
             mixer.init()
             mixer.music.load(f'{sound}')
             mixer.music.play()
             print(f"Strikes left: {strikes_left}")
-            
+            show_image(STRIKE_IMAGES[NUM_STRIKES - strikes_left - 1])
             ph._failed = False
             if strikes_left <= 0:
                 return end_game(gui, False)
             gui._lstrikes["text"] = f"Strikes left: {strikes_left}"
             # restart same phase after a delay
-            window.after(4000, lambda: show_image(phase_images[current]))
+            window.after(2000, lambda: show_image(phase_images[current]))
+            mixer.init()
+            mixer.music.load(phase_audio[current])
+            mixer.music.play()
             window.after(200, controller)
             return
-
         # Success in this phase?
         if ph._defused:
             if img_window:
@@ -194,15 +204,38 @@ def start_game(window, gui):
             window.after(200, controller)
             return
         
+        # Update phase-specific components
         if current == 0:
             gui.update_keypad(phases[0])
+            
+            # If Button phase exists and is in Blue mode, reset it to normal mode
+            if len(phases) > 3 and hasattr(phases[3], 'set_phase'):
+                phases[3].set_phase(None)
+                
         elif current == 1:
             gui.update_wires(phases[1])
+            
+            # If Button phase exists and is in Blue mode, connect it to Wires 
+            if len(phases) > 3 and hasattr(phases[3], 'set_phase') and phases[3]._original == 'B':
+                phases[3].set_phase('wires')
+                phases[3].set_wires_thread(phases[1])
+                
         elif current == 2:
             gui.update_toggles(phases[2])
+            
+            # If Button phase exists and is in Blue mode, connect it to Toggles
+            if len(phases) > 3 and hasattr(phases[3], 'set_phase') and phases[3]._original == 'B':
+                phases[3].set_phase('toggles')
+                phases[3].set_toggles_thread(phases[2])
+                
         elif current == 3:
             gui.update_button(phases[3])
-            phases[3].set_color('G')
+            
+            # Ensure button is in normal mode with green LED for button phase
+            if phases[3]._original == 'G':
+                phases[3].set_phase(None)  # Normal mode
+                phases[3].set_color('G')
+                
         window.after(100, controller)
 
     # Kick off the controller loop
