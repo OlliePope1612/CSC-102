@@ -7,7 +7,7 @@
 DEBUG = False        # enable verbose debug prints
 ANIMATE = True       # animate the LCD boot text?
 SHOW_BUTTONS = False # show Pause/Quit buttons on GUI?
-COUNTDOWN = 300      # initial countdown timer (seconds)
+COUNTDOWN = 240      # initial countdown timer (seconds)
 NUM_STRIKES = 5      # allowed failures before explosion
 NUM_PHASES = 4       # number of interactive phases (Keypad, Wires, Toggles, Button)
 
