@@ -194,42 +194,97 @@ class Toggles(PhaseThread):
 class Button(PhaseThread):
     def __init__(self, state_pin, rgb_pins, color, presses, timer_value, timer):
         super().__init__(state_pin, presses)
-        self._rgb      = rgb_pins
+        self._rgb = rgb_pins
         self._original = color
-        self._presses  = int(presses)
-        self._timer    = timer
+        self._presses = int(presses)
+        self._timer = timer
         self._timer._value = timer_value
-        self._count    = 0
+        self._count = 0
         self._start_ts = None
-        # light the “defuse” LED initially
+        self._submission_mode = (color == 'B')  # Flag for submission mode
+        self._current_phase = None              # Track current phase: 'wires', 'toggles', or None
+        
+        # Light the appropriate LED based on mode
         self.set_color(color)
   
     def set_color(self, color):
-        # turn on only the LED matching `color`
+        # Turn on only the LED matching `color`
         for i, led in enumerate(self._rgb):
             led.value = (['R','G','B'][i] != color)
+        
+        # Update submission mode flag when color changes
+        self._submission_mode = (color == 'B')
+
+    def set_phase(self, phase_name):
+        # Used to tell the button which phase is active
+        self._current_phase = phase_name
+        
+        # Only enable submission mode if we're in Wires or Toggles phase AND button is blue
+        if phase_name in ['wires', 'toggles'] and self._original == 'B':
+            self.set_color('B')  # Make sure blue is lit
+        else:
+            self.set_color(self._original)  # Default to original color
+
+    def confirm_current_phase(self):
+        # This is called when button is pressed in submission mode
+        if self._current_phase == 'wires' and hasattr(self, '_wires_thread'):
+            # Check if wires are in correct configuration
+            current = self._wires_thread.__str__()
+            if current == self._wires_thread._target:
+                self._wires_thread.defuse()
+            else:
+                self._wires_thread.fail()
+                
+        elif self._current_phase == 'toggles' and hasattr(self, '_toggles_thread'):
+            # Check if toggles are in correct configuration
+            current = self._toggles_thread.__str__()
+            if current == self._toggles_thread._target:
+                self._toggles_thread.defuse()
+            else:
+                self._toggles_thread.fail()
+
+    def set_wires_thread(self, wires_thread):
+        # Store reference to wires thread for confirmation
+        self._wires_thread = wires_thread
+        
+    def set_toggles_thread(self, toggles_thread):
+        # Store reference to toggles thread for confirmation
+        self._toggles_thread = toggles_thread
 
     def run(self):        
         if self._timer._value == 0:
             self._failed = True
+            
         while self._running:
-            if self._component.value:
-                # wait for you to release the button
+            if self._component.value:  # Button is pressed
+                # Wait for release
                 while self._component.value:
                     time.sleep(0.02)
-                # mark time on first press
-                if self._count == 0:
-                    self._start_ts = time.time()
-                self._count += 1
-                # if that was the last press, check your speed
-                if self._count >= self._presses:
-                    elapsed = time.time() - self._start_ts
-                    if elapsed <= self._timer._value:
-                        self.defuse()
-                    else:
-                        self.fail()
-                    return
+                
+                # Handle based on mode
+                if self._submission_mode and self._current_phase in ['wires', 'toggles']:
+                    # Submission mode for Wires or Toggles
+                    self.confirm_current_phase()
+                else:
+                    # Original counting mode
+                    # Mark time on first press
+                    if self._count == 0:
+                        self._start_ts = time.time()
+                    self._count += 1
+                    
+                    # If that was the last press, check speed
+                    if self._count >= self._presses:
+                        elapsed = time.time() - self._start_ts
+                        if elapsed <= self._timer._value:
+                            self.defuse()
+                        else:
+                            self.fail()
+                        return
+                        
             time.sleep(0.05)
 
     def __str__(self):
-        return f"{self._count}/{self._presses}"
+        if self._submission_mode and self._current_phase in ['wires', 'toggles']:
+            return f"SUBMIT ({self._current_phase})"
+        else:
+            return f"{self._count}/{self._presses}"
