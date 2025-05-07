@@ -6,8 +6,8 @@ import sys
 import random
 from tkinter import Tk, Toplevel, Label
 from PIL import Image, ImageTk
-from bomb_configs import *
-from bomb_phases import *
+from bomb_configs2 import *
+from bomb_phases2 import *
 import shutil, subprocess
 from pygame import mixer
 
